@@ -1,51 +1,28 @@
-# 환세쾌진극 (幻世快進劇)
+# 환세쾌진극 웹 포팅 (kaisin)
 
-Compile의 Windows 게임 「환세쾌진극」(1996/97)을 웹 브라우저에서 돌리는 재구현이다. 원본 실행 파일을 에뮬레이션하지 않고, 원본 로직을 TypeScript와 Canvas로 새로 옮겼다. 한국어판과 일본어판을 모두 지원하고, 모바일 터치 조작이 있다.
+**▶ 웹에서 바로 플레이: [flvrdoyster.github.io/kaisin](https://flvrdoyster.github.io/kaisin/)**
 
-비영리 복원·보존 프로젝트이며 Compile과는 관계가 없다. 게임과 그 자료의 권리는 원래 권리자에게 있다.
+## 개요
 
-## 실행
+환세쾌진극(幻世快進劇, Compile, 1996/97)을 웹 브라우저에서 즐길 수 있게 옮긴 **비영리 복원·보존 프로젝트**.
+원본 실행 파일을 에뮬레이션하지 않고, 게임 엔진을 TypeScript와 Canvas로 새로 구현했다.
+한국어판과 일본어판을 모두 담았으며, 키보드와 모바일 터치로 플레이할 수 있다.
 
-Node.js 24 이상이 필요하다.
+---
 
-```bash
-npm install
-npm run dev
-```
+## 소프트웨어 고지 / Software Notice
 
-`http://localhost:5179/`를 연다. 주소 옵션은 다음과 같다.
+본 저장소는 환세쾌진극의 한국어판과 일본어판을 브라우저 환경에서 실행하기 위한 재구현 엔진과,
+원본 파일에서 변환한 게임 데이터(그래픽, 맵, 음향, 대사 등)를 포함합니다.
 
-| 옵션 | 뜻 |
-|---|---|
-| `?v=kr` / `?v=jp` | 시작 언어 |
-| `?room=N` | N번 방에서 시작 |
-| `?mode=trial` | 타임 트라이얼로 시작 |
-| `?scene=ending` 등 | 해당 장면에서 시작 (`epilogue`, `clear`, `gameover`, `tomb`, `status`) |
-| `?touch=1` | 데스크톱에서 터치 조작 표시 |
+원본 게임은 Compile이 개발하였으며, 게임 자산(그래픽, 음악 등)의 모든 권리는 원저작권자에게 있습니다.
 
-## 조작
+본 프로젝트는 비상업적 보존 목적으로만 운영됩니다. 저작권자로서 자료 삭제를 원하실 경우 Issue를 열어주시면 즉시 대응하겠습니다.
 
-| 입력 | 키보드 | 터치 |
-|---|---|---|
-| 이동 | 방향키 | 화면 왼쪽을 누른 채 끌기 |
-| 공격·결정 | X, C, Z, Enter, Space | 화면 오른쪽 누르기 |
-| 일시정지 | Esc | 오른쪽 위 ❚❚ 버튼 |
-| 타이틀로 | F5 | 오른쪽 위 집 버튼 |
+This repository contains a re-implemented engine for running the Korean and Japanese releases of
+Gensei Kaishingeki (幻世快進劇) in a browser, along with game data (graphics, maps, sound, text, etc.)
+converted from the original game files.
 
-## 빌드와 배포
+The game was originally developed by Compile. All rights to the game and its assets (graphics, music, etc.) belong to their respective copyright holders.
 
-```bash
-npm run build
-```
-
-`tsc`로 `dist/`를 만들고 `index.html`, `dist/`, `assets/`를 `site/`로 모은다. 파일 주소가 모두 상대 경로라 하위 경로 호스팅에서도 동작한다. `main`에 푸시하면 `.github/workflows/pages.yml`이 GitHub Pages로 올린다.
-
-## 구성
-
-| 경로 | 내용 |
-|---|---|
-| `src/` | 게임 엔진 (TypeScript) |
-| `assets/` | 웹용으로 변환한 그래픽(인덱스 PNG), 맵·스크립트(JSON), 효과음·BGM, 대사 표 |
-| `tools/` | 개발 서버와 배포용 패키징 스크립트 |
-
-`assets/text/texts.tsv`는 대사 표(번호, 용도, 일본어, 한국어)로, 번역을 고칠 때는 한국어 열만 수정한다.
+This project exists solely for non-commercial preservation. If you are a rights holder and would like this material removed, please open an issue and it will be promptly addressed.
