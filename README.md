@@ -1,6 +1,6 @@
 # 환세쾌진극 웹 포팅 (kaisin)
 
-**▶ 웹에서 바로 플레이: [flvrdoyster.github.io/kaisin](https://flvrdoyster.github.io/kaisin/)**
+**▶ 웹에서 바로 플레이: https://kaisin.atah.io/**
 
 ## 개요
 
