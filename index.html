@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>환세쾌진극</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap"
+    />
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; color: #ccc; font: 14px system-ui, sans-serif; }
+      body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+      canvas { image-rendering: pixelated; aspect-ratio: 640 / 480; width: min(100vw, calc(90vh * 4 / 3), 1280px); height: auto; }
+      @media (orientation: portrait) { body { justify-content: flex-start; padding-top: calc(max(env(safe-area-inset-top), 0px) + 64px); box-sizing: border-box; } }
+      body { touch-action: none; user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
+      .touch { position: fixed; inset: 0; z-index: 10; touch-action: none; -webkit-tap-highlight-color: transparent; --edge: 18px; --pad-cy: calc(max(env(safe-area-inset-bottom), 0px) + var(--edge) + 70px); }
+      .touch-ring { box-sizing: border-box; position: fixed; width: 140px; height: 140px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
+        background: rgba(30, 30, 40, 0.28); border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.3), inset 0 0 14px rgba(0, 0, 0, 0.35), 0 3px 8px rgba(0, 0, 0, 0.4);
+        -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+      .touch-hint { display: block; left: calc(max(env(safe-area-inset-left), 0px) + var(--edge) + 70px); top: auto; bottom: var(--pad-cy); transform: translate(-50%, 50%); opacity: 0.8; }
+      .touch-base { display: none; }
+      .touch-knob { position: fixed; display: none; width: 58px; height: 58px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
+        background: rgba(255, 255, 255, 0.28); border: 1px solid rgba(255, 255, 255, 0.55);
+        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.28), 0 3px 8px rgba(0, 0, 0, 0.45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+      .touch-arrow { position: absolute; width: 10px; height: 18px; color: #fff; opacity: 0.5; display: flex; }
+      .touch-arrow svg { width: 100%; height: 100%; }
+      .touch-up { left: calc(50% - 5px); top: 8px; transform: rotate(90deg); }
+      .touch-down { left: calc(50% - 5px); bottom: 8px; transform: rotate(270deg); }
+      .touch-left { top: calc(50% - 9px); left: 12px; }
+      .touch-right { top: calc(50% - 9px); right: 12px; transform: rotate(180deg); }
+      .on-up .touch-up, .on-down .touch-down, .on-left .touch-left, .on-right .touch-right { opacity: 1; filter: drop-shadow(0 0 3px #fff); }
+      .touch-attack { box-sizing: border-box; position: fixed; right: calc(max(env(safe-area-inset-right), 0px) + var(--edge) + 48px); bottom: var(--pad-cy); transform: translate(50%, 50%);
+        width: 96px; height: 96px; border-radius: 50%; display: flex; align-items: center; justify-content: center; pointer-events: none; color: rgba(255, 255, 255, 0.95);
+        background: rgba(30, 30, 40, 0.3); border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.3), 0 3px 8px rgba(0, 0, 0, 0.4); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+        opacity: 0.85; transition: transform 0.05s, box-shadow 0.05s; }
+      .touch-attack svg { height: 46%; width: auto; opacity: 0.5; transition: opacity 0.05s; }
+      .touch-attack.on svg { opacity: 1; filter: drop-shadow(0 0 3px #fff); }
+      .touch-attack.on { opacity: 1; transform: translate(50%, calc(50% + 3px)); background: rgba(255, 255, 255, 0.22); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.25); }
+      .touch-attack.moved { right: auto; bottom: auto; transform: translate(-50%, -50%); }
+      .touch-attack.moved.on { transform: translate(-50%, calc(-50% + 3px)); }
+      .touch-button { box-sizing: border-box; position: fixed; top: calc(max(env(safe-area-inset-top), 0px) + 10px); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+        border-radius: 8px; color: rgba(236, 236, 236, 0.95); background: rgba(30, 30, 40, 0.3); border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.3), 0 3px 8px rgba(0, 0, 0, 0.4); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+      .touch-button svg { height: 50%; width: auto; }
+      .touch-pause { right: calc(max(env(safe-area-inset-right), 0px) + var(--edge)); }
+      .touch-title { right: calc(max(env(safe-area-inset-right), 0px) + var(--edge) + 48px); }
+    </style>
+  </head>
+  <body>
+    <canvas id="screen" width="640" height="480"></canvas>
+    <div id="status"></div>
+    <script type="module" src="./dist/main.js"></script>
+  </body>
+</html>

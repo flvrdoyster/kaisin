@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+original/
+re/
+site/
+__pycache__/
+*.pyc
+tools/extract/
+NOTES.md

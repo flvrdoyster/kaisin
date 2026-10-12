@@ -1,0 +1,208 @@
+{
+ "se": [
+  {
+   "file": "se_00.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 11025,
+   "bits": 8,
+   "channels": 1,
+   "frames": 3308
+  },
+  {
+   "file": "se_01.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 11025,
+   "bits": 8,
+   "channels": 1,
+   "frames": 3942
+  },
+  {
+   "file": "se_02.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 11025,
+   "bits": 8,
+   "channels": 1,
+   "frames": 3418
+  },
+  {
+   "file": "se_03.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 11025,
+   "bits": 8,
+   "channels": 1,
+   "frames": 6062
+  },
+  {
+   "file": "se_04.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 11025,
+   "bits": 8,
+   "channels": 1,
+   "frames": 2710
+  },
+  {
+   "file": "se_05.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 11025,
+   "bits": 8,
+   "channels": 1,
+   "frames": 9758
+  },
+  {
+   "file": "se_06.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 11025,
+   "bits": 8,
+   "channels": 1,
+   "frames": 5678
+  },
+  {
+   "file": "se_07.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 22050,
+   "bits": 8,
+   "channels": 1,
+   "frames": 17541
+  },
+  {
+   "file": "se_08.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 22050,
+   "bits": 8,
+   "channels": 1,
+   "frames": 2759
+  },
+  {
+   "file": "se_09.wav",
+   "b0": 0,
+   "format": 0,
+   "rate": 22050,
+   "bits": 8,
+   "channels": 1,
+   "frames": 17315
+  }
+ ],
+ "bgm": [
+  {
+   "file": "bgm_00.mid",
+   "flag": 1,
+   "loop": true,
+   "division": 48,
+   "loopTick": 401,
+   "endTick": 2130
+  },
+  {
+   "file": "bgm_01.mid",
+   "flag": 1,
+   "loop": true,
+   "division": 48,
+   "loopTick": 401,
+   "endTick": 3473
+  },
+  {
+   "file": "bgm_02.mid",
+   "flag": 1,
+   "loop": true,
+   "division": 48,
+   "loopTick": 401,
+   "endTick": 4239
+  },
+  {
+   "file": "bgm_03.mid",
+   "flag": 1,
+   "loop": true,
+   "division": 48,
+   "loopTick": 17,
+   "endTick": 1743
+  },
+  {
+   "file": "bgm_04.mid",
+   "flag": 1,
+   "loop": true,
+   "division": 48,
+   "loopTick": 1553,
+   "endTick": 4623
+  },
+  {
+   "file": "bgm_05.mid",
+   "flag": 1,
+   "loop": true,
+   "division": 48,
+   "loopTick": 785,
+   "endTick": 3857
+  },
+  {
+   "file": "bgm_06.mid",
+   "flag": 1,
+   "loop": true,
+   "division": 48,
+   "loopTick": 401,
+   "endTick": 1167
+  },
+  {
+   "file": "bgm_07.mid",
+   "flag": 0,
+   "loop": false,
+   "division": 48,
+   "loopTick": null,
+   "endTick": 307
+  },
+  {
+   "file": "bgm_08.mid",
+   "flag": 0,
+   "loop": false,
+   "division": 48,
+   "loopTick": null,
+   "endTick": 279
+  },
+  {
+   "file": "bgm_09.mid",
+   "flag": 0,
+   "loop": false,
+   "division": 48,
+   "loopTick": null,
+   "endTick": 532
+  },
+  {
+   "file": "bgm_10.mid",
+   "flag": 2,
+   "loop": false,
+   "division": 48,
+   "loopTick": null,
+   "endTick": 73
+  },
+  {
+   "file": "bgm_11.mid",
+   "flag": 2,
+   "loop": false,
+   "division": 48,
+   "loopTick": null,
+   "endTick": 17
+  },
+  {
+   "file": "bgm_12.mid",
+   "flag": 2,
+   "loop": false,
+   "division": 48,
+   "loopTick": null,
+   "endTick": 43
+  },
+  {
+   "file": "bgm_13.mid",
+   "flag": 1,
+   "loop": true,
+   "division": 48,
+   "loopTick": 401,
+   "endTick": 4241
+  }
+ ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "kaisin",
+  "description": "환세쾌진극(Compile, 1996/97) 웹 재구현",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node tools/serve.ts --watch",
+    "build": "tsc && node tools/pack.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
