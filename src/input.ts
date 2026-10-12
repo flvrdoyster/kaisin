@@ -1,3 +1,5 @@
+import { track } from "./analytics.ts";
+
 const ARROW =
   '<polygon fill="currentColor" points="16.43 0 16.43 5.48 10.95 5.48 10.95 10.95 5.48 10.95 5.48 16.43 0 16.43 0 21.9 5.48 21.9 5.48 27.38 10.95 27.38 10.95 32.86 16.43 32.86 16.43 38.33 21.9 38.33 21.9 0 16.43 0"/>';
 
@@ -99,6 +101,7 @@ export class Input {
   }
 
   private touch() {
+    track("gamepad_activate");
     const root = element("div", "touch", document.body);
     this.hint = element("div", "touch-ring touch-hint", root);
     for (const d of ["up", "down", "left", "right"] as const) element("i", `touch-arrow touch-${d}`, this.hint).innerHTML = ICONS[d];

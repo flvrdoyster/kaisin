@@ -9,6 +9,7 @@ import { setState } from "./game/core.ts";
 import { Game, loadCommonSheets } from "./game/game.ts";
 import { readTexts } from "./game/text.ts";
 import { startMusic, type TrackInfo } from "./audio/music.ts";
+import { track } from "./analytics.ts";
 import { decodeIndexedPng, type IndexedImage } from "./data/image.ts";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -199,9 +200,11 @@ async function boot() {
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
+  track("game_start", { lang });
 }
 
 boot().catch((e) => {
+  track("load_failed");
   document.getElementById("status")!.textContent = String(e);
   console.error(e);
 });

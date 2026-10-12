@@ -22,7 +22,7 @@ if (process.argv.includes("--watch")) {
 createServer((req, res) => {
   const path = normalize(decodeURIComponent((req.url ?? "/").split("?")[0]));
   const file = join(root, path === "/" ? "index.html" : path);
-  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path.startsWith("/dist/") || path.startsWith("/assets/"))) {
+  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || path.startsWith("/dist/") || path.startsWith("/assets/"))) {
     res.writeHead(403).end();
     return;
   }
