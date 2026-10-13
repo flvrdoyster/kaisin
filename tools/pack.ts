@@ -5,5 +5,5 @@ const root = resolve(import.meta.dirname, "..");
 const out = join(root, "site");
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
-for (const name of ["index.html", "robots.txt", "sitemap.xml", "dist", "assets"]) cpSync(join(root, name), join(out, name), { recursive: true });
+for (const name of ["index.html", "robots.txt", "sitemap.xml", "thumbnail-kaisin.png", "dist", "assets"]) cpSync(join(root, name), join(out, name), { recursive: true });
 console.log(`site: ${out}`);
