@@ -21,8 +21,7 @@ import {
   touchPlayer,
   wrap64,
 } from "../core.ts";
-import { dust, fragments, hitSpark, puff, scorePopup, shards, smokeBurst, smokeRise } from "../effects.ts";
-import { spawnBullet, zako2Fall } from "./basic.ts";
+import { puff, scorePopup, shards, smokeBurst, smokeRise } from "../effects.ts";
 
 const PX16 = 0x100000;
 const inside480 = (x: number, y: number) => x >= 0 && x < 0x1e00001 && y >= 0 && y < 0x1c00001;

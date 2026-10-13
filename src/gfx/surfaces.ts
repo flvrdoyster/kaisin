@@ -1,5 +1,3 @@
-import { IndexedImage } from "../data/image.ts";
-
 export interface Cell {
   sx: number;
   sy: number;
@@ -16,25 +14,6 @@ export class Surface {
   frame(n: number): Cell | null {
     return this.cell(n);
   }
-}
-
-export function sheetCanvas(img: IndexedImage, palStart: number, colorKey: number): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext("2d")!;
-  const data = ctx.createImageData(img.width, img.height);
-  for (let k = 0; k < img.pixels.length; k++) {
-    const idx = img.pixels[k];
-    const [r, g, b] = img.palette[idx] ?? [0, 0, 0];
-    const p = k * 4;
-    data.data[p] = r;
-    data.data[p + 1] = g;
-    data.data[p + 2] = b;
-    data.data[p + 3] = idx + palStart === colorKey ? 0 : 255;
-  }
-  ctx.putImageData(data, 0, 0);
-  return canvas;
 }
 
 export function gridSurface(canvas: HTMLCanvasElement, cellW: number, cellH: number): Surface {
