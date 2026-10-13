@@ -4,7 +4,7 @@ import { createReadStream, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const port = Number(process.argv.slice(2).find((a) => /^\d+$/.test(a)) ?? 5179);
+const port = Number(process.argv.slice(2).find((a) => /^\d+$/.test(a)) ?? 7674);
 const types: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",

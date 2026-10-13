@@ -6,10 +6,13 @@
 
 - 원본 실행 파일을 에뮬레이션하지 않고 엔진을 새로 구현한다(TypeScript + Canvas, 번들러·외부 런타임 라이브러리 없음).
 - 실행에 EXE가 필요 없다. 게임 로직이 쓰는 EXE 안의 표(삼각함수, 프레임 표, 방 표, 키 대응, 사각형 표, 데모 입력 등 78개, 52KB)는 로컬 역분석 도구로 일본판 EXE에서 추출해 `src/data/gameTables.ts`에 숫자로 넣어 두었다(두 판의 표 내용은 대사 포인터 표를 빼면 같다). 대사는 `assets/text/texts.tsv`에서 읽는다.
-- 런타임은 원본 파일 형식을 읽지 않는다. 원본 폴더(`original/kr`·`original/jp`, 사운드폰트 `original/SC-55.sf3`)는 `tools/extract/`의 변환 도구만 읽고, 결과는 `assets/`(`gfx/` 인덱스 PNG, `maps/` 방·배경 JSON, `audio/` WAV·OGG)에 둔다. 엔진과 개발 서버는 `assets/`만 쓴다. `assets/`는 변환 결과 전체를 커밋한다. 원본 폴더 `original/`만 git에서 제외한다.
+- 런타임은 원본 파일 형식을 읽지 않는다. 원본 폴더(`original/kr`·`original/jp`, 사운드폰트 `original/SC-55.sf3`)는 `original/extract/`의 변환 도구만 읽고, 결과는 `assets/`(`gfx/` 인덱스 PNG, `maps/` 방·배경 JSON, `audio/` WAV·OGG)에 둔다. 엔진과 개발 서버는 `assets/`만 쓴다. `assets/`는 변환 결과 전체를 커밋한다. `original/`(원본 파일과 그 아래 변환 도구 `extract/`, 분석 자료 `re/`)만 git에서 제외한다.
 - 원본 로직은 함수 단위로 옮긴다. 객체 시스템(600개 풀, 층 10개 연결 목록, 해제 후에도 이전·다음 링크 유지), 40ms 프레임, 16.16 고정소수점, 버퍼 배치(MDT·ATR 활성/임시 연속 메모리)를 원본과 같게 둔다.
-- 빌드와 실행: `tsc`가 `src/`를 `dist/`의 ES 모듈로 내보낸다(상대 import는 `.ts`로 쓰고 `rewriteRelativeImportExtensions`가 `.js`로 바꾼다). `npm run dev`는 `tools/serve.ts`(Node 내장 `http`, 외부 패키지 없음)가 `tsc --watch`와 함께 `index.html`·`dist/`·`assets/`만 서빙한다(기본 포트 5179, 인자로 변경). 대사 표 `assets/text/texts.tsv`는 직접 쓰는 파일이라 커밋한다.
+- 빌드와 실행: `tsc`가 `src/`를 `dist/`의 ES 모듈로 내보낸다(상대 import는 `.ts`로 쓰고 `rewriteRelativeImportExtensions`가 `.js`로 바꾼다). `npm run dev`는 `tools/serve.ts`(Node 내장 `http`, 외부 패키지 없음)가 `tsc --watch`와 함께 `index.html`·`dist/`·`assets/`만 서빙한다(기본 포트 7674, SMSH를 전화 키패드로 치환한 값. 인자로 변경. 접속은 `http://localhost:7674/`, PC에서 터치 화면은 `?touch=1`). 대사 표 `assets/text/texts.tsv`는 직접 쓰는 파일이라 커밋한다.
 - 배포: `npm run build`가 `tsc`로 `dist/`를 만든 뒤 `tools/pack.ts`가 `index.html`·`dist/`·`assets/`를 `site/`로 모은다(7.8MB). 파일 주소는 모두 상대 경로라 `https://사용자.github.io/저장소/` 같은 하위 경로 호스팅에서도 동작한다(`/kaisin/` 하위 경로로 확인). `.github/workflows/pages.yml`은 `main`에 푸시하면 빌드해서 GitHub Pages로 올린다(저장소 설정에서 Pages 소스를 GitHub Actions로 지정해야 한다). `original/` 없이 빌드된다.
+- 저장소 폴더: `src/`(엔진 소스), `assets/`(변환된 게임 데이터, 런타임이 읽는 유일한 데이터), `tools/`(`serve.ts` 개발 서버, `pack.ts` 배포 묶기), `.github/workflows/`(Pages 배포). 루트에는 `index.html`·`robots.txt`·`sitemap.xml`·`package.json`·`tsconfig.json`이 있다. `original/`은 git 제외 로컬 폴더이고 구성은 `original/README.md`에 있다.
+- 빌드 산출물 폴더(둘 다 git 제외, 지워도 다시 생김): `dist/`는 `tsc`가 `src/`를 컴파일한 JS이며 개발 서버가 내주는 폴더다. `site/`는 `npm run build`가 배포할 파일(`index.html`·`dist/`·`assets/` 등)만 모은 폴더로 개발 중에는 쓰지 않는다. 실제 배포는 GitHub Actions가 서버에서 같은 빌드를 새로 해 그 `site/`를 올린다(로컬 `site/`가 올라가는 것이 아니다).
+- 수정 반영: `npm run dev`를 켜 두면 `src/` 저장 시 `tsc --watch`가 다시 컴파일하고, `assets/`(`texts.tsv` 포함)는 컴파일 없이 새로고침만 하면 반영된다. 푸시하면 Actions가 빌드·배포하므로 로컬 빌드는 필요 없다. `tsc`가 에러를 내면 빌드가 실패해 사이트는 이전 버전으로 남으므로 푸시 전에 `npm run typecheck`를 돌린다. 커밋만으로는 배포되지 않고 푸시해야 배포된다.
 - 개발 서버 URL 옵션: `?mode=trial`(장면 4로 시작), `?scene=ending|epilogue|clear|gameover|tomb|status`(해당 장면에서 시작), `?room=N`(시작 방). 개발 모드에서는 `window.kaisin.run(프레임수, 입력비트)`로 프레임을 직접 진행할 수 있다(숨김 탭에서는 requestAnimationFrame이 멈추므로).
 
 ### 작업 순서
@@ -28,7 +31,7 @@
 | 7 | BGM(MIDI), jp·kr 차이 마무리 | 음색·반복 귀로 확인 | BGM 구현 |
 
 ## CNS (그래픽)
-- 변환 도구: `node tools/extract/gfx.ts <원본 kr 폴더> <원본 jp 폴더> <출력 폴더>`가 CNS를 인덱스 컬러 PNG(8비트, PLTE에 원본 팔레트, 변환 전후 픽셀·팔레트가 일치함을 50개 모두 확인)로 저장한다. 언어별 6개는 `kr/`, `jp/` 하위에, 나머지는 한 벌만 둔다. 엔진은 `assets/gfx/`의 PNG를 `src/data/image.ts`로 읽는다(팔레트 번호가 게임 로직의 일부라 RGBA로 합치지 않고 인덱스 그대로 쓴다). CNS 디코더는 `tools/extract/cns.ts`에만 있다.
+- 변환 도구: `node original/extract/gfx.ts <원본 kr 폴더> <원본 jp 폴더> <출력 폴더>`가 CNS를 인덱스 컬러 PNG(8비트, PLTE에 원본 팔레트, 변환 전후 픽셀·팔레트가 일치함을 50개 모두 확인)로 저장한다. 언어별 6개는 `kr/`, `jp/` 하위에, 나머지는 한 벌만 둔다. 엔진은 `assets/gfx/`의 PNG를 `src/data/image.ts`로 읽는다(팔레트 번호가 게임 로직의 일부라 RGBA로 합치지 않고 인덱스 그대로 쓴다). CNS 디코더는 `original/extract/cns.ts`에만 있다.
 
 - 압축: `0x422140`의 LZ. 명령 바이트 `c`:
   - `0` 끝
@@ -112,7 +115,7 @@
 
 ## 방
 
-- 변환 도구: `node tools/extract/maps.ts <원본 폴더> <출력 폴더>`가 방마다 `room_NN.json`(`tiles` 20×15 칸, `attributes` 충돌 속성, `script` 4개 값씩 한 줄인 TK 연산)과 배경 `backdrop_*.json`(`MAIN_BG`·`TITLE_BG`·`STAFF_BG`·`END_BG_0~6`)을 만든다. 원본 `.MDT`·`.ATR`·`.DAT`는 모두 리틀엔디언 `int32` 배열이라 값은 그대로이고, 방 23은 `tiles`·`attributes`가 없다(원본에 `MAP23.MDT`·`.ATR`이 없음). 변환 전후 값 일치를 116개 모두 확인했다.
+- 변환 도구: `node original/extract/maps.ts <원본 폴더> <출력 폴더>`가 방마다 `room_NN.json`(`tiles` 20×15 칸, `attributes` 충돌 속성, `script` 4개 값씩 한 줄인 TK 연산)과 배경 `backdrop_*.json`(`MAIN_BG`·`TITLE_BG`·`STAFF_BG`·`END_BG_0~6`)을 만든다. 원본 `.MDT`·`.ATR`·`.DAT`는 모두 리틀엔디언 `int32` 배열이라 값은 그대로이고, 방 23은 `tiles`·`attributes`가 없다(원본에 `MAP23.MDT`·`.ATR`이 없음). 변환 전후 값 일치를 116개 모두 확인했다.
 
 - 방 36개, 번호 0~35. 현재 방 번호는 `[0x45b4d8]`. 방 이동 시 좌우 ±1, 상하 ±6, 0~35 밖이면 36을 더하거나 뺀다(`0x414c4b`).
 - 방 23(0x17)은 MDT·ATR이 없다. 들어가면 MDT·ATR·TK를 읽지 않고 상태 5로 분기한다(`0x414d10`). `MAP_TK23.DAT`(32B)는 존재하지만 이 경로로는 읽히지 않는다.
@@ -841,8 +844,8 @@ flowchart LR
 - `SMASH.MLK`: 14곡, 모두 형식 0·트랙 1·분해능 48. 반복 곡(플래그 1)은 0~6, 13번이고 모두 `FF 59`(길이 2)를 가진다. 7~9번 플래그 0, 10~12번 플래그 2. 곡 데이터 뒤 24바이트(오프셋 48925~)는 어떤 항목도 가리키지 않는다.
 - 엔진 재생: 런타임은 MLK·WLK를 읽지 않는다. 변환 도구가 만든 `assets/audio/`의 `audio.json`·`se_NN.wav`(효과음)와 `bgm.json`·`bgm_NN.ogg`(BGM)를 읽는다. 효과음은 `src/audio/se.ts`가 디코딩한 버퍼를 채널별로 재생하고, BGM은 `src/audio/music.ts`가 곡을 처음 요청할 때 내려받아 디코딩(캐시)하고 `AudioBufferSourceNode.loopStart/loopEnd`로 반복한다. 곡이 바뀌거나 정지하면 이전 곡을 바로 멈춘다. 사운드폰트와 합성기는 변환 도구에서만 쓴다(`spessasynth_core`는 개발 의존성).
 - `0x4220d0(n)`: n번 곡 재생, 같은 곡이면 무시, 0xFF 이상이면 정지.
-- 변환 도구: `node tools/extract/audio.ts <원본 폴더> <출력 폴더>`(엔진은 `assets/audio`를 읽는다)가 WLK를 `se_NN.wav`(원본 PCM 그대로, 8비트는 부호 없는 형식)로, MLK를 `bgm_NN.mid`(곡 데이터 그대로)로 저장하고, 항목별 `b0`·형식·샘플레이트·반복 플래그·반복 틱을 `audio.json`에 남긴다. 일본판과 한국판의 `GENSEI.WLK`·`SMASH.MLK`는 바이트 단위로 같다.
-- BGM 렌더링: `node tools/extract/bgm.ts <SMASH.MLK> <사운드폰트> <출력 폴더>`가 엔진과 같은 순서(이벤트 시각·반복 시 템포 복원)로 `spessasynth_core`에 이벤트를 넣어 곡마다 44.1kHz 스테레오로 렌더링하고 ffmpeg로 `bgm_NN.ogg`(Vorbis 256k)와 `bgm.json`(반복 시작·끝 초, 길이)을 만든다. 반복 곡은 첫 구간(인트로) 뒤에 반복 구간 3번째 패스를 이어 붙여 앞 패스의 잔향이 반복 시작에 이미 들어 있게 하고, 반복 시작·끝을 `AudioBuffer.loopStart/loopEnd`로 쓰면 된다. 반복 곡은 4패스를 렌더링해 3번째 패스를 쓰고, 이어 붙일 지점 직후 1초의 20ms 단위 음량 곡선을 4번째 패스(실제로 이어질 소리)와 비교해 `seam`(상대 차이, 0이면 같음)으로 출력한다. 샘플 단위 비교는 코러스·LFO 위상이 패스마다 달라 쓸 수 없다. 현재 값은 0.06~0.22(04번이 0.22, 나머지 0.12 이하). 반복하지 않는 곡은 끝에 3초 꼬리를 둔다. 14곡 합계 OGG 약 6.4MB(WAV 약 48MB).
+- 변환 도구: `node original/extract/audio.ts <원본 폴더> <출력 폴더>`(엔진은 `assets/audio`를 읽는다)가 WLK를 `se_NN.wav`(원본 PCM 그대로, 8비트는 부호 없는 형식)로, MLK를 `bgm_NN.mid`(곡 데이터 그대로)로 저장하고, 항목별 `b0`·형식·샘플레이트·반복 플래그·반복 틱을 `audio.json`에 남긴다. 일본판과 한국판의 `GENSEI.WLK`·`SMASH.MLK`는 바이트 단위로 같다.
+- BGM 렌더링(`spessasynth_core`와 `ffmpeg` 필요, `package.json`에는 넣지 않으므로 `npm i --no-save spessasynth_core`로 임시 설치): `node original/extract/bgm.ts <SMASH.MLK> <사운드폰트> <출력 폴더>`가 엔진과 같은 순서(이벤트 시각·반복 시 템포 복원)로 `spessasynth_core`에 이벤트를 넣어 곡마다 44.1kHz 스테레오로 렌더링하고 ffmpeg로 `bgm_NN.ogg`(Vorbis 256k)와 `bgm.json`(반복 시작·끝 초, 길이)을 만든다. 반복 곡은 첫 구간(인트로) 뒤에 반복 구간 3번째 패스를 이어 붙여 앞 패스의 잔향이 반복 시작에 이미 들어 있게 하고, 반복 시작·끝을 `AudioBuffer.loopStart/loopEnd`로 쓰면 된다. 반복 곡은 4패스를 렌더링해 3번째 패스를 쓰고, 이어 붙일 지점 직후 1초의 20ms 단위 음량 곡선을 4번째 패스(실제로 이어질 소리)와 비교해 `seam`(상대 차이, 0이면 같음)으로 출력한다. 샘플 단위 비교는 코러스·LFO 위상이 패스마다 달라 쓸 수 없다. 현재 값은 0.06~0.22(04번이 0.22, 나머지 0.12 이하). 반복하지 않는 곡은 끝에 3초 꼬리를 둔다. 14곡 합계 OGG 약 6.4MB(WAV 약 48MB).
 - EXE에는 CD 오디오 MCI 명령 문자열(`open cdaudio` 등)도 있다.
 
 ## 전역 변수 (게임 상태, 0x45b3a4~0x45b588)

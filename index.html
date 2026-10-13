@@ -9,13 +9,13 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="환세쾌진극(Compile, 1996/97)을 웹 브라우저에서 바로 플레이할 수 있는 비영리 복원·보존 프로젝트입니다. 한국어판과 일본어판을 지원하고 모바일 터치로도 즐길 수 있습니다." />
-    <meta name="keywords" content="환세쾌진극, 幻世快進劇, Compile, 컴파일, 웹 게임, 레트로 게임, 복원, 환세 시리즈, gensei, kaishingeki" />
+    <meta name="description" content="환세쾌진극(Compile, 1996/97)을 웹 브라우저에서 바로 플레이할 수 있는 비영리 복원·보존 프로젝트입니다. 한국어와 일본어를 함께 지원하고 모바일 터치로도 즐길 수 있습니다." />
+    <meta name="keywords" content="환세쾌진극, 幻世快進劇, Compile, 컴파일, 웹 게임, 레트로 게임, 복원, 환세 시리즈, gensei, kaisin" />
     <meta property="og:title" content="환세쾌진극 : atah.io" />
     <meta property="og:type" content="website" />
     <link rel="canonical" href="https://kaisin.atah.io/" />
     <meta property="og:url" content="https://kaisin.atah.io/" />
-    <meta property="og:description" content="환세쾌진극(Compile, 1996/97)을 웹 브라우저에서 바로 플레이할 수 있는 비영리 복원·보존 프로젝트입니다. 한국어판과 일본어판을 지원하고 모바일 터치로도 즐길 수 있습니다." />
+    <meta property="og:description" content="환세쾌진극(Compile, 1996/97)을 웹 브라우저에서 바로 플레이할 수 있는 비영리 복원·보존 프로젝트입니다. 한국어와 일본어를 함께 지원하고 모바일 터치로도 즐길 수 있습니다." />
     <meta property="og:site_name" content="atah.io" />
     <meta property="og:locale" content="ko_KR" />
     <!-- Google Tag Manager -->
@@ -36,17 +36,17 @@
       body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
       canvas { image-rendering: pixelated; aspect-ratio: 640 / 480; width: min(100vw, calc(90vh * 4 / 3), 1280px); height: auto; }
       @media (orientation: portrait) { body { justify-content: flex-start; padding-top: calc(max(env(safe-area-inset-top), 0px) + 64px); box-sizing: border-box; } }
-      body { touch-action: none; user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
-      .touch { position: fixed; inset: 0; z-index: 10; touch-action: none; -webkit-tap-highlight-color: transparent; --edge: 18px; --pad-cy: calc(max(env(safe-area-inset-bottom), 0px) + var(--edge) + 70px); }
+      html, body { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
+      .touch { position: fixed; inset: 0; z-index: 10; touch-action: none; -webkit-tap-highlight-color: transparent; --edge: 18px; --glass-bg: rgba(30, 30, 40, 0.3); --glass-border: 1px solid rgba(255, 255, 255, 0.2); --glass-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25), 0 3px 8px rgba(0, 0, 0, 0.35); --glass-glow: inset 0 0 14px rgba(0, 0, 0, 0.35); --pad-cy: calc(max(env(safe-area-inset-bottom), 0px) + var(--edge) + 70px); }
       .touch-ring { box-sizing: border-box; position: fixed; width: 140px; height: 140px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
-        background: rgba(30, 30, 40, 0.28); border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.3), inset 0 0 14px rgba(0, 0, 0, 0.35), 0 3px 8px rgba(0, 0, 0, 0.4);
+        background: var(--glass-bg); border: var(--glass-border);
+        box-shadow: var(--glass-glow), var(--glass-shadow);
         -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
       .touch-hint { display: block; left: calc(max(env(safe-area-inset-left), 0px) + var(--edge) + 70px); top: auto; bottom: var(--pad-cy); transform: translate(-50%, 50%); opacity: 0.8; }
       .touch-base { display: none; }
       .touch-knob { position: fixed; display: none; width: 58px; height: 58px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
-        background: rgba(255, 255, 255, 0.28); border: 1px solid rgba(255, 255, 255, 0.55);
-        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.28), 0 3px 8px rgba(0, 0, 0, 0.45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+        background: rgba(255, 255, 255, 0.3); border: 1px solid rgba(255, 255, 255, 0.55);
+        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25), 0 3px 8px rgba(0, 0, 0, 0.45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
       .touch-arrow { position: absolute; width: 10px; height: 18px; color: #fff; opacity: 0.5; display: flex; }
       .touch-arrow svg { width: 100%; height: 100%; }
       .touch-up { left: calc(50% - 5px); top: 8px; transform: rotate(90deg); }
@@ -55,18 +55,18 @@
       .touch-right { top: calc(50% - 9px); right: 12px; transform: rotate(180deg); }
       .on-up .touch-up, .on-down .touch-down, .on-left .touch-left, .on-right .touch-right { opacity: 1; filter: drop-shadow(0 0 3px #fff); }
       .touch-attack { box-sizing: border-box; position: fixed; right: calc(max(env(safe-area-inset-right), 0px) + var(--edge) + 48px); bottom: var(--pad-cy); transform: translate(50%, 50%);
-        width: 96px; height: 96px; border-radius: 50%; display: flex; align-items: center; justify-content: center; pointer-events: none; color: rgba(255, 255, 255, 0.95);
-        background: rgba(30, 30, 40, 0.3); border: 1px solid rgba(255, 255, 255, 0.4);
-        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.3), 0 3px 8px rgba(0, 0, 0, 0.4); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+        width: 96px; height: 96px; border-radius: 20px; display: flex; align-items: center; justify-content: center; pointer-events: none; color: rgba(255, 255, 255, 0.95);
+        background: var(--glass-bg); border: var(--glass-border);
+        box-shadow: var(--glass-glow), var(--glass-shadow); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
         opacity: 0.85; transition: transform 0.05s, box-shadow 0.05s; }
       .touch-attack svg { height: 46%; width: auto; opacity: 0.5; transition: opacity 0.05s; }
       .touch-attack.on svg { opacity: 1; filter: drop-shadow(0 0 3px #fff); }
-      .touch-attack.on { opacity: 1; transform: translate(50%, calc(50% + 3px)); background: rgba(255, 255, 255, 0.22); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.25); }
+      .touch-attack.on { opacity: 1; transform: translate(50%, calc(50% + 3px)); background: rgba(255, 255, 255, 0.22); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2); }
       .touch-attack.moved { right: auto; bottom: auto; transform: translate(-50%, -50%); }
       .touch-attack.moved.on { transform: translate(-50%, calc(-50% + 3px)); }
       .touch-button { box-sizing: border-box; position: fixed; top: calc(max(env(safe-area-inset-top), 0px) + 10px); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-        border-radius: 8px; color: rgba(236, 236, 236, 0.95); background: rgba(30, 30, 40, 0.3); border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.3), 0 3px 8px rgba(0, 0, 0, 0.4); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+        border-radius: 8px; color: rgba(236, 236, 236, 0.95); background: var(--glass-bg);
+        box-shadow: var(--glass-shadow); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
       .touch-button svg { height: 50%; width: auto; }
       .touch-pause { right: calc(max(env(safe-area-inset-right), 0px) + var(--edge)); }
       .touch-title { right: calc(max(env(safe-area-inset-right), 0px) + var(--edge) + 48px); }
