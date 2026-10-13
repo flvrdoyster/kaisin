@@ -237,6 +237,10 @@ export class Game {
     private readonly startRoom: number | null,
   ) {}
 
+  autoPause() {
+    if (G.scene === 0 && G.timeTrial !== 1) G.world.paused = true;
+  }
+
   step() {
     G.input = this.readInput();
     G.se?.frame();

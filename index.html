@@ -43,7 +43,10 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap"
     />
     <style>
-      html, body { margin: 0; height: 100%; background: #000; color: #ccc; font: 14px system-ui, sans-serif; }
+      @font-face { font-family: "KoddiUDOnGothic"; src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/KoddiUDOnGothic-Regular.woff") format("woff"); font-weight: 400; font-style: normal; font-display: swap; }
+      @font-face { font-family: "KoddiUDOnGothic"; src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/KoddiUDOnGothic-Bold.woff") format("woff"); font-weight: 700; font-style: normal; font-display: swap; }
+      html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+      html, body { margin: 0; height: 100%; background: #000; color: #ccc; font: 14px "KoddiUDOnGothic", system-ui, sans-serif; }
       body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
       canvas { image-rendering: pixelated; aspect-ratio: 640 / 480; width: min(100vw, calc(90vh * 4 / 3), 1280px); height: auto; }
       @media (orientation: portrait) { body { justify-content: flex-start; padding-top: calc(max(env(safe-area-inset-top), 0px) + 64px); box-sizing: border-box; } }
@@ -81,6 +84,13 @@
       .touch-button svg { height: 50%; width: auto; }
       .touch-pause { right: calc(max(env(safe-area-inset-right), 0px) + var(--edge)); }
       .touch-title { right: calc(max(env(safe-area-inset-right), 0px) + var(--edge) + 48px); }
+      #status { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 90vw; text-align: center; pointer-events: none; }
+      @media (orientation: portrait) { #status { top: calc(max(env(safe-area-inset-top), 0px) + 64px + min(75vw, 90vh) / 2); } }
+      #footer { position: fixed; left: 0; right: 0; bottom: calc(max(env(safe-area-inset-bottom), 0px) + 4px); z-index: 1; text-align: center; font-size: 0.75em; line-height: 1.15; color: rgba(204, 204, 204, 0.5); white-space: nowrap; pointer-events: none; }
+      #footer p { margin: 0; }
+      #footer a { color: inherit; pointer-events: auto; }
+      @media (max-height: 560px) { #footer .footer-credits { display: none; } }
+      @media (orientation: portrait) { #footer { bottom: auto; top: calc(max(env(safe-area-inset-top), 0px) + 64px + min(75vw, 90vh) + 10px); } }
     </style>
   </head>
   <body>
@@ -89,6 +99,7 @@
     <!-- End Google Tag Manager (noscript) -->
     <canvas id="screen" width="640" height="480"></canvas>
     <div id="status"></div>
+    <script src="https://atah.io/footer.js"></script>
     <script type="module" src="./dist/main.js"></script>
   </body>
 </html>

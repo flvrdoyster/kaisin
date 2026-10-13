@@ -73,7 +73,7 @@ async function loadFiles(): Promise<Loaded> {
       continue;
     }
   }
-  if (languages.length === 0) throw new Error("원본 파일을 찾지 못했습니다");
+  if (languages.length === 0) throw new Error("게임 데이터를 불러오지 못했습니다");
   return { ints: await loadMaps(), images, languages };
 }
 
@@ -116,7 +116,7 @@ const DEV = ["localhost", "127.0.0.1"].includes(location.hostname);
 async function boot() {
   const params = new URLSearchParams(location.search);
   const status = document.getElementById("status")!;
-  status.textContent = "파일을 읽는 중…";
+  status.textContent = "불러오는 중…";
   const textTable = await (await fetch("assets/text/texts.tsv")).text();
   const [{ ints, images, languages }] = await Promise.all([loadFiles(), loadWebFonts(textTable)]);
   const requested = params.get("v") === "jp" ? "jp" : params.get("v") === "kr" ? "kr" : savedLang();
@@ -149,9 +149,13 @@ async function boot() {
   const input = new Input(data.i32("keymap0"));
   const audio = new AudioContext();
   loadAudio(audio, state).catch((e) => console.warn("오디오", e));
-  const resume = () => audio.resume();
-  addEventListener("keydown", resume);
-  addEventListener("pointerdown", resume);
+  const wake = () => {
+    if ((audio.state as string) !== "running") audio.resume().catch(() => {});
+  };
+  for (const type of ["keydown", "pointerdown", "pointerup", "touchend", "click", "focus", "pageshow"]) addEventListener(type, wake);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) wake();
+  });
 
   const startRoom = params.has("room") ? Number(params.get("room")) : null;
   const SCENES: Record<string, number> = { ending: 5, epilogue: 0xc, clear: 0xe, gameover: 7, tomb: 0xa, status: 0x11 };
@@ -181,6 +185,11 @@ async function boot() {
     };
     Object.assign(window, { kaisin: { state, game, run, input } });
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) game.autoPause();
+  });
+  addEventListener("pagehide", () => game.autoPause());
 
   const FRAME_MS = 40;
   let last = performance.now();
