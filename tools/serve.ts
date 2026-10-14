@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { createReadStream, statSync } from "node:fs";
+import { createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -19,7 +19,49 @@ if (process.argv.includes("--watch")) {
   spawn(join(root, "node_modules/.bin/tsc"), ["--watch", "--preserveWatchOutput"], { cwd: root, stdio: "inherit" });
 }
 
+const SAVABLE = /^\/dev\/(characters\/[a-z]+\.json)$/;
+const loopback = (a?: string) => a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
+
 createServer((req, res) => {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  if (url.pathname.startsWith("/dev/")) {
+    if (!loopback(req.socket.remoteAddress)) {
+      res.writeHead(403).end();
+      return;
+    }
+    if (url.pathname === "/dev/stat") {
+      const f = normalize(url.searchParams.get("f") ?? "");
+      const full = join(root, "assets", f);
+      try {
+        if (!full.startsWith(join(root, "assets")) || !statSync(full).isFile()) throw new Error();
+        res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ mtime: statSync(full).mtimeMs }));
+      } catch {
+        res.writeHead(404).end();
+      }
+      return;
+    }
+    const m = SAVABLE.exec(url.pathname);
+    if (req.method === "PUT" && m) {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        try {
+          const body = Buffer.concat(chunks).toString("utf8");
+          JSON.parse(body);
+          if (body.length > 100000) throw new Error();
+          const dir = join(root, "assets/characters");
+          mkdirSync(dir, { recursive: true });
+          writeFileSync(join(root, "assets", m[1]), body);
+          res.writeHead(200).end("ok");
+        } catch {
+          res.writeHead(400).end();
+        }
+      });
+      return;
+    }
+    res.writeHead(404).end();
+    return;
+  }
   const path = normalize(decodeURIComponent((req.url ?? "/").split("?")[0]));
   const file = join(root, path === "/" ? "index.html" : path);
   if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || path.startsWith("/dist/") || path.startsWith("/assets/"))) {

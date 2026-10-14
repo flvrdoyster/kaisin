@@ -7,6 +7,9 @@ import { SoundEffects } from "./audio/se.ts";
 import { State, Tables } from "./game/state.ts";
 import { setState } from "./game/core.ts";
 import { Game, loadCommonSheets } from "./game/game.ts";
+import { KIRI_FACE, formatDef, getKiriDef, parseDef, selectCharacter, setKiriDef } from "./game/characters.ts";
+import { SpriteViewer, type DevHooks } from "./dev/sprites.ts";
+import { checkFace, checkSheet } from "./dev/sheetCheck.ts";
 import { readTexts } from "./game/text.ts";
 import { startMusic, type TrackInfo } from "./audio/music.ts";
 import { track } from "./analytics.ts";
@@ -29,6 +32,8 @@ function imageList(): string[] {
   return names;
 }
 
+const OPTIONAL_IMAGES = ["KIRI.png", "KIRI_FACE.png"];
+
 async function fetchFile(root: string, name: string): Promise<Uint8Array> {
   const res = await fetch(`${root}/${name}`);
   if (!res.ok) throw new Error(`${root}/${name}: ${res.status}`);
@@ -39,6 +44,7 @@ interface Loaded {
   ints: Map<string, Int32Array>;
   images: Map<string, IndexedImage>;
   languages: Lang[];
+  optional: { kiri?: IndexedImage; face?: IndexedImage; paletteSizes: Map<string, number> };
 }
 
 async function loadMaps(): Promise<Map<string, Int32Array>> {
@@ -74,7 +80,27 @@ async function loadFiles(): Promise<Loaded> {
     }
   }
   if (languages.length === 0) throw new Error("게임 데이터를 불러오지 못했습니다");
-  return { ints: await loadMaps(), images, languages };
+  const paletteSizes = new Map<string, number>();
+  await Promise.all(
+    OPTIONAL_IMAGES.map(async (name) => {
+      const res = await fetch(`assets/gfx/${name}`);
+      if (!res.ok) return;
+      const img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
+      paletteSizes.set(name, img.palette.length);
+      img.palette = img.palette.slice(0, 16);
+      images.set(name, img);
+    }),
+  );
+  const optional = { kiri: images.get("KIRI.png"), face: images.get("KIRI_FACE.png"), paletteSizes };
+  if (!optional.kiri) images.set("KIRI.png", images.get("SMASH.png")!);
+  try {
+    const res = await fetch("assets/characters/kiri.json", { cache: "no-store" });
+    const def = res.ok ? parseDef(await res.json()) : null;
+    if (def) setKiriDef(def);
+  } catch {
+    // 데이터 파일이 없으면 기본값을 쓴다
+  }
+  return { ints: await loadMaps(), images, languages, optional };
 }
 
 async function decode(ctx: AudioContext, url: string): Promise<AudioBuffer> {
@@ -118,7 +144,7 @@ async function boot() {
   const status = document.getElementById("status")!;
   status.textContent = "불러오는 중…";
   const textTable = await (await fetch("assets/text/texts.tsv")).text();
-  const [{ ints, images, languages }] = await Promise.all([loadFiles(), loadWebFonts(textTable)]);
+  const [{ ints, images, languages, optional }] = await Promise.all([loadFiles(), loadWebFonts(textTable)]);
   const requested = params.get("v") === "jp" ? "jp" : params.get("v") === "kr" ? "kr" : savedLang();
   const lang: Lang = requested && languages.includes(requested) ? requested : languages[0];
   let current: Lang = lang;
@@ -137,6 +163,9 @@ async function boot() {
   const state = new State(new Tables(data), data, sheets, intsOf);
   setState(state);
   loadCommonSheets();
+  const sprites = DEV ? params.get("sprites") : null;
+  const editing = DEV && params.get("edit") !== null;
+  selectCharacter(sprites === "smash" ? "smash" : sprites !== null || editing || params.get("char") === "kiri" ? "kiri" : "smash");
 
   const canvas = document.getElementById("screen") as HTMLCanvasElement;
   const ctx = canvas.getContext("2d")!;
@@ -184,13 +213,51 @@ async function boot() {
       }
       forcedInput = null;
     };
-    Object.assign(window, { kaisin: { state, game, run, input } });
+    Object.assign(window, { kaisin: { state, game, run, input, def: getKiriDef } });
   }
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) game.autoPause();
   });
   addEventListener("pagehide", () => game.autoPause());
+
+  const hooks: DevHooks = {
+    warnings: () => [
+      ...checkSheet(optional.kiri, optional.paletteSizes.get("KIRI.png") ?? 0, data.i32("rectSMASH"), images.get("SMASH.png")!),
+      ...checkFace(optional.face, optional.paletteSizes.get("KIRI_FACE.png") ?? 0),
+    ],
+    refresh: async (name) => {
+      const res = await fetch(`assets/gfx/${name}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
+      optional.paletteSizes.set(name, img.palette.length);
+      img.palette = img.palette.slice(0, 16);
+      images.set(name, img);
+      if (name === "KIRI.png") {
+        optional.kiri = img;
+        sheets.reload(new Set([name]));
+      } else {
+        optional.face = img;
+        if (sheets.get(KIRI_FACE)) sheets.reload(new Set([name]));
+        else sheets.loadGrid(KIRI_FACE, name, 0xf0, 0, 0x80, 0x80);
+      }
+      sheets.applyPalette();
+      selectCharacter("kiri");
+    },
+    reloadDef: async () => {
+      const res = await fetch("assets/characters/kiri.json", { cache: "no-store" });
+      const def = res.ok ? parseDef(await res.json()) : null;
+      if (def) {
+        setKiriDef(def);
+        selectCharacter("kiri");
+      }
+    },
+    save: async (def) => {
+      const res = await fetch("/dev/characters/kiri.json", { method: "PUT", body: formatDef(def) });
+      return res.ok;
+    },
+  };
+  const runner = sprites === null && !editing ? game : new SpriteViewer(renderer, hooks, editing, sprites === "smash");
 
   const FRAME_MS = 40;
   let last = performance.now();
@@ -201,12 +268,12 @@ async function boot() {
     if (acc > FRAME_MS * 5) acc = FRAME_MS * 5;
     let stepped = false;
     while (acc >= FRAME_MS) {
-      game.step();
+      runner.step();
       acc -= FRAME_MS;
       stepped = true;
-      if (acc >= FRAME_MS) game.draw();
+      if (acc >= FRAME_MS) runner.draw();
     }
-    if (stepped) game.draw();
+    if (stepped) runner.draw();
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);

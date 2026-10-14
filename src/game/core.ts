@@ -140,11 +140,11 @@ export function inAttackRect(x: number, y: number): boolean {
 
 export function touchPlayer(l: number, t: number, r: number, b: number) {
   if (G.invuln !== 0 || G.noHit !== 0 || G.hurtTimer !== 0) return;
-  if (l < G.playerCX && G.playerCX < r && t < G.playerCY && G.playerCY < b) G.hurtTimer = 8;
+  if (l < G.playerCX + G.hurt[2] && G.playerCX + G.hurt[0] < r && t < G.playerCY + G.hurt[3] && G.playerCY + G.hurt[1] < b) G.hurtTimer = 8;
 }
 
 export function healTouch(l: number, t: number, r: number, b: number, n: number): boolean {
-  if (G.hurtTimer === 0 && l < G.playerCX && G.playerCX < r && t < G.playerCY && G.playerCY < b) {
+  if (G.hurtTimer === 0 && l < G.playerCX + G.hurt[2] && G.playerCX + G.hurt[0] < r && t < G.playerCY + G.hurt[3] && G.playerCY + G.hurt[1] < b) {
     G.life += n;
     if (G.life > 5) G.life = 5;
     return true;

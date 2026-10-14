@@ -5,6 +5,7 @@ import { drawHud } from "./hud.ts";
 import { playerMain, playerStartWalk } from "./player.ts";
 import { changeRoom, loadInts, startRoomScript } from "./rooms.ts";
 import { spawnGameOver, spawnTomb } from "./scenes.ts";
+import { KIRI_FACE, KIRI_SHEET, charSpr } from "./characters.ts";
 import { spawnTitle } from "./title.ts";
 import { spawnStatusEdit } from "./status.ts";
 import { loadBackdrop, spawnClearScreen, spawnEnding, spawnStaff } from "./ending.ts";
@@ -20,6 +21,8 @@ export function loadCommonSheets() {
   s.loadGrid(0xd, "ANI_SP.png", 0xc0, 0xc0, 0x20, 0x20);
   s.loadRects(0xb, "SUUJI_DT.png", 0x50, 0x50, e.i32("rectSUUJI"));
   s.loadRects(5, "SMASH.png", 0x30, 0x30, e.i32("rectSMASH"));
+  s.loadRects(KIRI_SHEET, "KIRI.png", 0xe0, 0xe0, e.i32("rectSMASH"));
+  if (s.has("KIRI_FACE.png")) s.loadGrid(KIRI_FACE, "KIRI_FACE.png", 0xf0, 0, 0x80, 0x80);
   s.loadRects(0xc, "IROIRO_0.png", 0xb0, 0xb0, e.i32("rectIROIRO"));
   s.loadRects(9, "ZAKO_4.png", 0xa0, 0xa0, e.i32("rectZAKO4"));
   s.loadRects(0x11, "UNEUNE.png", 0x80, 0x80, e.i32("rectUNEUNE"));
@@ -56,7 +59,7 @@ function startGame(room: number, timeTrial: boolean) {
   p.kind = 1;
   p.x = timeTrial ? 0x200000 : 0xe80000;
   p.y = timeTrial ? 0xc00000 : 0x2800000;
-  p.spr = 0x50000;
+  p.spr = charSpr();
   p.f38 = p.x;
   p.f3c = p.y;
   p.f34 = 8;
@@ -167,7 +170,7 @@ function continueGame() {
   p.kind = 1;
   p.x = G.savedX;
   p.y = G.savedY;
-  p.spr = 0x50000;
+  p.spr = charSpr();
   p.f38 = p.x;
   p.f3c = p.y;
   p.f34 = 8;

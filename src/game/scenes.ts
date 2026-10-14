@@ -1,5 +1,6 @@
 import { Obj } from "./obj.ts";
 import { G, free, rand, spawn } from "./core.ts";
+import { charSpr } from "./characters.ts";
 
 export function hideRoom() {
   for (let r = 0; r < 15; r++) {
@@ -50,7 +51,7 @@ function runnerUpdate(o: Obj) {
   if (dir === 1) o.x += 0x80000;
   o.f54++;
   if (o.f54 === 0x14) spawnDigit(o.x + 0x180000, o.y + 0x100000, o.f50, (dir - 2) * 0x10000);
-  o.spr = G.t.playerAnim[dir * 0x10 + o.f40] + 0x50000;
+  o.spr = G.char.anim[dir * 0x10 + o.f40] + charSpr();
   if (o.x > 0x3fffff && o.x < 0x1c00001) return;
   free(o);
 }
@@ -93,7 +94,7 @@ function spawnRunner(x: number, y: number, tx: number, ty: number, count: number
     r.kind = 1;
     r.x = x - 0x180000;
     r.y = y;
-    r.spr = 0x50000;
+    r.spr = charSpr();
     r.f44 = dir;
     r.f50 = count;
     r.f34 = 1;
@@ -196,7 +197,7 @@ export function spawnTomb() {
   o.kind = 1;
   o.x = 0xe80000;
   o.y = 0x1000000;
-  o.spr = 0x50022;
+  o.spr = charSpr() + 0x22;
   o.f34 = 1;
   o.drawFlags = 5;
   hideRoom();

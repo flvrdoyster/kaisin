@@ -1,3 +1,4 @@
+import type { Character } from "./characters.ts";
 import { GameData } from "../data/gameData.ts";
 import type { Lang, Mode } from "../settings.ts";
 import type { TextInfo } from "./text.ts";
@@ -130,6 +131,8 @@ export class State {
   readonly tk = new Int32Array(TK_RECORDS * 4);
   readonly tkTemp = new Int32Array(TK_RECORDS * 4);
   readonly atkRects = new Int32Array(12);
+  char!: Character;
+  readonly hurt = new Int32Array(4);
   hitbox = false;
   readonly hitboxRects = new Int32Array(12);
   hitboxStrikes: number[] = [];

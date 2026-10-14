@@ -132,6 +132,15 @@ export class Renderer {
     this.ctx.fillRect(x - (size >> 1), y - (size >> 1), size, size);
   }
 
+  get out(): CanvasRenderingContext2D {
+    return this.screen;
+  }
+
+  view(sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number) {
+    this.screen.imageSmoothingEnabled = false;
+    this.screen.drawImage(this.back, sx, sy, sw, sh, dx, dy, dw, dh);
+  }
+
   present(dx: number, dy: number) {
     this.screen.fillStyle = "#000";
     this.screen.fillRect(0, 0, SCREEN_W, SCREEN_H);

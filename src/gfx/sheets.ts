@@ -112,6 +112,15 @@ export class Sheets {
     }
   }
 
+  has(name: string): boolean {
+    try {
+      this.image(name);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   get(id: number): Surface | null {
     return this.loaded.get(id)?.surface ?? null;
   }

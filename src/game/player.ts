@@ -10,6 +10,7 @@ import {
   strikeB,
 } from "./core.ts";
 import { afterimage, burst8, puff, sparkle } from "./effects.ts";
+import { charSpr } from "./characters.ts";
 import { freeCategory, killCategory, screenWipe } from "./world.ts";
 import { bgmPlay } from "../audio/bgm.ts";
 import { changeRoom, startRoomScript } from "./rooms.ts";
@@ -26,7 +27,7 @@ export function clearAttack() {
 }
 
 function setRects(x: number, y: number, base: number, count: number) {
-  const t = G.t.attackRects;
+  const t = G.char.attackRects;
   for (let i = 0; i < count; i++) {
     G.atkRects[i * 4] = t[base + i * 4] * FX + x;
     G.atkRects[i * 4 + 1] = t[base + i * 4 + 1] * FX + y;
@@ -44,12 +45,11 @@ const swingRects = (x: number, y: number, dir: number) => setRects(x, y, dir * 2
 const smashRect = (x: number, y: number, dir: number) => setRects(x, y, 12 + dir * 20, 1);
 
 function strikePoints(x: number, y: number, row: number) {
-  const t = G.t.strikePoints;
-  const base = (row - 4) * 14;
+  const t = G.char.strikes[row - 4];
   if (G.hitbox) G.hitboxStrikes = [];
-  for (let k = 0; k < 7; k++) {
-    const sx = t[base + k * 2] + fix(x) + 0x18;
-    const sy = t[base + k * 2 + 1] + fix(y) + 0x18;
+  for (let k = 0; k < t.length; k += 2) {
+    const sx = t[k] + fix(x) + 0x18;
+    const sy = t[k + 1] + fix(y) + 0x18;
     if (G.hitbox) G.hitboxStrikes.push(sx, sy);
     strikeA(sx, sy);
   }
@@ -145,10 +145,10 @@ export function playerStep(px: number, py: number, dir: number, smash: boolean):
 }
 
 function applyPose(o: Obj, frameIndex: number) {
-  const pose = G.t.playerAnim[frameIndex];
-  o.x = G.t.poses[pose * 4] * FX + o.f38;
-  o.y = G.t.poses[pose * 4 + 1] * FX + o.f3c;
-  o.spr = (pose + 0x50000) | 0x50000;
+  const pose = G.char.anim[frameIndex];
+  o.x = G.char.poses[pose * 4] * FX + o.f38;
+  o.y = G.char.poses[pose * 4 + 1] * FX + o.f3c;
+  o.spr = (pose + charSpr()) | charSpr();
 }
 
 function updateCenter(o: Obj) {
@@ -177,7 +177,7 @@ function enterExit(o: Obj, code: number) {
 
 export function playerMain(o: Obj) {
   clearAttack();
-  o.spr ^= 0x50000;
+  o.spr ^= charSpr();
   if ((G.input & IN_BUTTON) === 0 && o.f54 !== 1) {
     if (o.f50 !== 0) {
       o.f50 = 0;
@@ -312,7 +312,7 @@ export function playerSmash(o: Obj) {
   G.noHit = 1;
   const ox = o.f38;
   const oy = o.f3c;
-  o.spr ^= 0x50000;
+  o.spr ^= charSpr();
   if (o.f40 < 8) o.f40 += 4;
   if (o.f40 === 8) o.f4c -= 0x40000;
   if (o.f40 === 10) o.f4c += 0x40000;
@@ -331,9 +331,9 @@ export function playerHurt(o: Obj) {
   clearAttack();
   G.noHit = 2;
   o.x = o.f38;
-  o.spr ^= 0x50000;
+  o.spr ^= charSpr();
   o.y = o.f3c - G.t.hurtBounce[o.f44];
-  o.spr = 0x50020;
+  o.spr = charSpr() + 0x20;
   updateCenter(o);
   o.f44++;
   if (o.f44 > 0x24) {
@@ -356,14 +356,14 @@ export function playerHurt(o: Obj) {
 }
 
 function playerDead(o: Obj) {
-  o.spr = 0x50024;
+  o.spr = charSpr() + 0x24;
   o.f44++;
   if (o.f44 > 0x28) G.scene = 7;
 }
 
 export function playerExit(o: Obj) {
   clearAttack();
-  o.spr ^= 0x50000;
+  o.spr ^= charSpr();
   const code = o.f48;
   if (code === 0x1e) {
     o.f3c -= 0x40000;
@@ -458,7 +458,7 @@ function beginIntro(o: Obj) {
 export function playerEnter(o: Obj) {
   G.entering = 1;
   clearAttack();
-  o.spr ^= 0x50000;
+  o.spr ^= charSpr();
   const code = o.f48;
   if (code === 0x1e) {
     o.f3c -= 0x80000;

@@ -126,6 +126,7 @@ export function drawHud(r: Renderer) {
     const spr = G.t.invulnBlink[blink] + (G.invuln < 0x1f ? 0x50002 : 0x50000);
     r.sprite(fix(G.playerCX) - 0x20, fix(G.playerCY) - 0x20, spr);
   }
+  if (G.char.face !== 0) r.sprite(0x200, 0, G.char.face);
   if (G.hiScore < G.score) G.hiScore = G.score;
   for (let i = 0; i < 5; i++) {
     switch (G.hudSlots[i]) {
