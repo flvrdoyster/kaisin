@@ -11,7 +11,7 @@ import {
   spawnZako2Spiral,
   spawnZako2Straight,
 } from "./enemies/basic.ts";
-import { crabSwarm } from "./enemies/crabs.ts";
+import { batSwarm } from "./enemies/bats.ts";
 import { spawnJointBoss } from "./enemies/joint.ts";
 import { spawnBoss2 } from "./enemies/boss2.ts";
 import { spawnHeavyBoss } from "./enemies/heavy.ts";
@@ -23,7 +23,7 @@ import { spawnNeglect } from "./enemies/neglect.ts";
 import { spawnPitcher } from "./enemies/pitcher.ts";
 import { spawnRobot } from "./enemies/robot.ts";
 import { spawnScissizer } from "./enemies/scissizer.ts";
-import { spawnTakoGrid } from "./enemies/tako.ts";
+import { spawnCrabGrid } from "./enemies/crabGrid.ts";
 import { spriteMessage } from "./messages.ts";
 import {
   spawnArmored,
@@ -170,7 +170,7 @@ export function runTkOp(op: number, a: number, b: number, c: number): boolean {
       countSpawn();
       return true;
     case 0xe7:
-      crabSwarm();
+      batSwarm();
       return true;
     case 0xe8:
       spawnFixedHeart(a, b, 0xc0089);
@@ -182,7 +182,7 @@ export function runTkOp(op: number, a: number, b: number, c: number): boolean {
       G.trialShow = 1;
       return true;
     case 0xeb:
-      spawnTakoGrid();
+      spawnCrabGrid();
       return true;
     case 0xec:
       spawnKillChallenge();

@@ -143,28 +143,28 @@ function spawnBullet(x: number, y: number) {
   o.f34 = 4;
 }
 
-function takoMain(o: Obj) {
+function crabMain(o: Obj) {
   o.f54--;
   if (o.x > 0xa00000 && o.f54 < 1) {
     o.f54 = rand(800) + 200;
     spawnBullet(o.x + 0x100000, o.y + 0x100000);
   }
   if (G.counter518 !== 0) {
-    switch (G.takoMode) {
+    switch (G.crabMode) {
       case 0:
         o.y -= 0x80000;
-        if (o.y <= 0x200000) G.takoMoved = 1;
+        if (o.y <= 0x200000) G.crabMoved = 1;
         break;
       case 1:
         o.y += 0x80000;
-        if (o.y >= 0x1a00000) G.takoMoved = 1;
+        if (o.y >= 0x1a00000) G.crabMoved = 1;
         break;
       case 2:
       case 3:
         o.x -= 0x80000;
-        G.takoMoved = 1;
+        G.crabMoved = 1;
         if (o.x < 0x800000) {
-          G.takoLeft--;
+          G.crabLeft--;
           puff(o.x, o.y, 2);
           free(o);
           return;
@@ -174,7 +174,7 @@ function takoMain(o: Obj) {
   }
   if (laserHit(o.x + 0x100000, o.y + 0x100000, 0x100000)) {
     seRequest(1);
-    G.takoLeft--;
+    G.crabLeft--;
     smokeRise(o.x + 0x100000, o.y + 0x100000, 6);
     scorePopup(fix(o.x) + 8, fix(o.y) + 8, 10);
     countHit();
@@ -186,7 +186,7 @@ function takoMain(o: Obj) {
   o.spr = o.f44 + div(o.f40, 3);
 }
 
-function takoGather(o: Obj) {
+function crabGather(o: Obj) {
   o.x += (o.f38 - o.x) >> 1;
   o.f50++;
   o.y += (o.f3c - o.y) >> 1;
@@ -194,13 +194,13 @@ function takoGather(o: Obj) {
     o.x = o.f38;
     o.y = o.f3c;
     o.f50 = 0;
-    o.update = takoMain;
+    o.update = crabMain;
   }
 }
 
 function spawnTako(x: number, y: number, tx: number, ty: number) {
   const spr = tx > 0x19fffff ? 0xe0009 : 0xe0002;
-  const o = spawn(takoGather, 3);
+  const o = spawn(crabGather, 3);
   if (!o) return;
   o.kind = 1;
   o.x = x;
@@ -212,7 +212,7 @@ function spawnTako(x: number, y: number, tx: number, ty: number) {
   o.f54 = rand(800) + 100;
   o.f34 = 4;
   countSpawn();
-  G.takoLeft++;
+  G.crabLeft++;
 }
 
 function clearRow(row: number) {
@@ -243,7 +243,7 @@ function spawnFinisher() {
 
 function controllerUpdate(o: Obj) {
   o.x += (0x500000 - o.x) >> 1;
-  if (G.takoLeft === 0) {
+  if (G.crabLeft === 0) {
     G.clearFlag = 1;
     spawnFinisher();
     free(o);
@@ -251,12 +251,12 @@ function controllerUpdate(o: Obj) {
   }
   o.y = G.playerCY - 0x100000;
   o.f50++;
-  if (div(G.takoLeft + 1, 3) < o.f50) {
+  if (div(G.crabLeft + 1, 3) < o.f50) {
     o.f50 = 0;
     G.counter518 = 1;
-    if (G.takoMoved !== 0) {
-      G.takoMode = [2, 3, 1, 0][G.takoMode];
-      G.takoMoved = 0;
+    if (G.crabMoved !== 0) {
+      G.crabMode = [2, 3, 1, 0][G.crabMode];
+      G.crabMoved = 0;
     }
   } else {
     G.counter518 = 0;
@@ -281,7 +281,7 @@ function spawnController() {
   o.f34 = 4;
 }
 
-export function spawnTakoGrid() {
+export function spawnCrabGrid() {
   spawnController();
   for (let x = 0x1400000; x < 0x1d00000; x += 0x300000) {
     for (let y = 0x400000; y < 0x1000000; y += 0x300000) {

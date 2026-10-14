@@ -117,6 +117,21 @@ export class Renderer {
     this.ctx.fillText(text, x, y);
   }
 
+  box(x: number, y: number, w: number, h: number, color: string) {
+    this.ctx.globalAlpha = 0.25;
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x, y, w, h);
+    this.ctx.globalAlpha = 1;
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  }
+
+  dot(x: number, y: number, size: number, color: string) {
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x - (size >> 1), y - (size >> 1), size, size);
+  }
+
   present(dx: number, dy: number) {
     this.screen.fillStyle = "#000";
     this.screen.fillRect(0, 0, SCREEN_W, SCREEN_H);

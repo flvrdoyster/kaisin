@@ -166,6 +166,7 @@ async function boot() {
   state.mode = savedMode();
   state.invincible = state.mode === 2 ? 1 : 0;
   state.bugMode = state.mode === 1 ? 1 : 0;
+  state.hitbox = params.has("hitbox");
   state.textTable = textTable;
   state.texts = readTexts(textTable, lang);
   state.languageHooks.push(() => {

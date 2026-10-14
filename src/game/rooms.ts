@@ -80,9 +80,9 @@ export function roomInit() {
   G.trialShown = 0;
   G.power = 0;
   G.invuln = 0;
-  G.takoLeft = 0;
-  G.takoMoved = 0;
-  G.takoMode = 0;
+  G.crabLeft = 0;
+  G.crabMoved = 0;
+  G.crabMode = 0;
   G.laserState.fill(0);
   G.laserY.fill(0);
   G.laserX.fill(0);

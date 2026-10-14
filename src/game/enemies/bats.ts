@@ -12,14 +12,14 @@ function turnUp(d: number): number {
   return d + 1 < 0x40 ? d + 1 : d - 0x3f;
 }
 
-function crabAnim(o: Obj) {
+function batAnim(o: Obj) {
   o.f40++;
   if (o.f40 > 7) o.f40 = 0;
   o.spr = (o.f40 >> 2) + 0x7000d;
 }
 
-export function crabCurve(o: Obj) {
-  crabAnim(o);
+export function batCurve(o: Obj) {
+  batAnim(o);
   const v = o.f50;
   const d = o.f54;
   const sp = fix(v);
@@ -30,8 +30,8 @@ export function crabCurve(o: Obj) {
   if (!onScreen(o.x, o.y)) free(o);
 }
 
-function crabWander(o: Obj) {
-  crabAnim(o);
+function batWander(o: Obj) {
+  batAnim(o);
   const sp = fix(o.f50);
   o.x += cos(o.f54) * sp;
   o.y += nsin(o.f54) * sp;
@@ -40,7 +40,7 @@ function crabWander(o: Obj) {
   if (!onScreen(o.x, o.y)) free(o);
 }
 
-export function spawnCrab(update: (o: Obj) => void, x: number, y: number, dir: number, speed: number) {
+export function spawnBat(update: (o: Obj) => void, x: number, y: number, dir: number, speed: number) {
   const o = spawn(update, 4);
   if (!o) return;
   o.kind = 1;
@@ -54,14 +54,14 @@ export function spawnCrab(update: (o: Obj) => void, x: number, y: number, dir: n
   o.f58 = 1;
 }
 
-export function crabSwarm() {
+export function batSwarm() {
   const d0 = rand(0x28) + 4;
   const y0 = (rand(0x10) + 0x108) * 0x10000;
-  spawnCrab(crabCurve, (rand(0x10) + 0xe8) * 0x10000, y0, d0, 0x10000);
+  spawnBat(batCurve, (rand(0x10) + 0xe8) * 0x10000, y0, d0, 0x10000);
   for (let i = 0; i < 0x13; i++) {
     const d = rand(0x28) + 4;
     const y = (rand(0x10) + 0x108) * 0x10000;
-    spawnCrab(crabWander, (rand(0x10) + 0xe8) * 0x10000, y, d, 0x50000);
+    spawnBat(batWander, (rand(0x10) + 0xe8) * 0x10000, y, d, 0x50000);
   }
 }
 
@@ -120,12 +120,12 @@ export function startRoomBurst() {
   for (let i = 0; i < 0x14; i++) {
     const d = rand(0x18) + 0x28;
     const y = (rand(0x10) + 2) * 0x10000;
-    spawnCrab(crabCurve, (rand(0x10) + 0xf8) * 0x10000, y, d, 0x10000);
+    spawnBat(batCurve, (rand(0x10) + 0xf8) * 0x10000, y, d, 0x10000);
   }
   for (let i = 0; i < 3; i++) {
     const d = rand(0x18) + 0x28;
     const y = (rand(0x10) + 2) * 0x10000;
-    spawnCrab(crabWander, (rand(0x10) + 0xf8) * 0x10000, y, d, 0x10000);
+    spawnBat(batWander, (rand(0x10) + 0xf8) * 0x10000, y, d, 0x10000);
   }
   for (let i = 0; i < 8; i++) trail(0x1000000, 0, rand(0x14) + 0x26, 0x12);
   puff(0x1000000, 0x200000, 8);

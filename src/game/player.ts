@@ -33,6 +33,10 @@ function setRects(x: number, y: number, base: number, count: number) {
     G.atkRects[i * 4 + 2] = t[base + i * 4 + 2] * FX + x;
     G.atkRects[i * 4 + 3] = t[base + i * 4 + 3] * FX + y;
   }
+  if (G.hitbox) {
+    G.hitboxRects.set(G.atkRects);
+    G.hitboxTtl = 10;
+  }
 }
 
 const startRect = (x: number, y: number, dir: number) => setRects(x, y, 16 + dir * 20, 1);
@@ -42,7 +46,13 @@ const smashRect = (x: number, y: number, dir: number) => setRects(x, y, 12 + dir
 function strikePoints(x: number, y: number, row: number) {
   const t = G.t.strikePoints;
   const base = (row - 4) * 14;
-  for (let k = 0; k < 7; k++) strikeA(t[base + k * 2] + fix(x) + 0x18, t[base + k * 2 + 1] + fix(y) + 0x18);
+  if (G.hitbox) G.hitboxStrikes = [];
+  for (let k = 0; k < 7; k++) {
+    const sx = t[base + k * 2] + fix(x) + 0x18;
+    const sy = t[base + k * 2 + 1] + fix(y) + 0x18;
+    if (G.hitbox) G.hitboxStrikes.push(sx, sy);
+    strikeA(sx, sy);
+  }
 }
 
 export function playerStep(px: number, py: number, dir: number, smash: boolean): number {

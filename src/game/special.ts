@@ -1,6 +1,6 @@
 import { G, atrGet, rand, seRequest } from "./core.ts";
 import { openExit } from "./rooms.ts";
-import { startRoomBurst } from "./enemies/crabs.ts";
+import { startRoomBurst } from "./enemies/bats.ts";
 import { spriteMessage } from "./messages.ts";
 
 function trialResult() {

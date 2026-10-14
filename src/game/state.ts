@@ -44,7 +44,7 @@ export class Tables {
   readonly smallMsgs: Int32Array;
   readonly finalAnim: Record<string, Int32Array>;
   readonly finalLightning: Int32Array;
-  readonly crabCircle: Int32Array;
+  readonly batCircle: Int32Array;
   readonly boss10tgt: Int32Array;
   readonly boss0f3: Int32Array;
   readonly pitcher: Record<number, Int32Array>;
@@ -90,7 +90,7 @@ export class Tables {
       E: data.i32("finalAnimE"),
     };
     this.finalLightning = data.i32("finalLightning");
-    this.crabCircle = data.i32("crabCircle");
+    this.batCircle = data.i32("batCircle");
     this.boss10tgt = data.i32("boss10tgt");
     this.boss0f3 = data.i32("boss0f3");
     this.pitcher = {
@@ -130,6 +130,10 @@ export class State {
   readonly tk = new Int32Array(TK_RECORDS * 4);
   readonly tkTemp = new Int32Array(TK_RECORDS * 4);
   readonly atkRects = new Int32Array(12);
+  hitbox = false;
+  readonly hitboxRects = new Int32Array(12);
+  hitboxStrikes: number[] = [];
+  hitboxTtl = 0;
 
   scene = 2;
   room = 0;
@@ -182,10 +186,10 @@ export class State {
   trialSide = 0;
   trialShown = 0;
   pauseKeyPrev = 0;
-  takoLeft = 0;
+  crabLeft = 0;
   menu = 0;
-  takoMoved = 0;
-  takoMode = 0;
+  crabMoved = 0;
+  crabMode = 0;
   readonly laserState = new Int32Array(8);
   readonly laserX = new Int32Array(8);
   readonly laserY = new Int32Array(8);

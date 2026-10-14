@@ -18,7 +18,7 @@ import { bossCleared, spriteMessage } from "../messages.ts";
 import { showText } from "../text.ts";
 import { killByUpdate } from "../world.ts";
 import { spawnBullet, spawnZako2Straight } from "./basic.ts";
-import { crabCurve, spawnCrab } from "./crabs.ts";
+import { batCurve, spawnBat } from "./bats.ts";
 import { emitter, emitterUpdate, shotUpdate } from "./scissizer.ts";
 
 function moveStep(o: Obj) {
@@ -249,12 +249,12 @@ function burstSparks(x: number, y: number) {
   }
 }
 
-function crabCircle(x: number, y: number) {
+function batCircle(x: number, y: number) {
   let py = y;
   for (let r = 0; r < 16; r++) {
     let px = x;
     for (let c = 0; c < 16; c++) {
-      if (G.t.crabCircle[r * 16 + c] !== 0) spawnCrab(crabCurve, px, py, rand(0x40), 0x10000);
+      if (G.t.batCircle[r * 16 + c] !== 0) spawnBat(batCurve, px, py, rand(0x40), 0x10000);
       px += 0x80000;
     }
     py += 0x80000;
@@ -731,7 +731,7 @@ function bossUpdate(o: Obj) {
       break;
     case 0x33:
       scorePopup(0x100, 0xb0, 9999);
-      crabCircle(0xc00000, 0x600000);
+      batCircle(0xc00000, 0x600000);
       seRequest(1);
       o.f54 = 0x34;
       bossCleared(0x1e);

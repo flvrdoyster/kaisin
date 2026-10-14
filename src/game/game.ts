@@ -336,7 +336,22 @@ export class Game {
       const t = G.texts[0x5c];
       if (t) r.text(0, 0x1c0, t.text, t.font);
     }
+    if (G.hitbox && G.scene === 0) this.drawHitbox();
     r.present(G.shakeX, G.shakeY);
     this.advanceShake();
+  }
+
+  private drawHitbox() {
+    const r = this.renderer;
+    if (G.hitboxTtl > 0) {
+      G.hitboxTtl--;
+      const b = G.hitboxRects;
+      for (let i = 0; i < 12; i += 4) {
+        if (b[i] === b[i + 2]) continue;
+        r.box(b[i] >> 16, b[i + 1] >> 16, (b[i + 2] - b[i]) >> 16, (b[i + 3] - b[i + 1]) >> 16, "#ff4040");
+      }
+      for (let i = 0; i < G.hitboxStrikes.length; i += 2) r.dot(G.hitboxStrikes[i], G.hitboxStrikes[i + 1], 3, "#40c0ff");
+    }
+    r.dot(G.playerCX >> 16, G.playerCY >> 16, 5, "#ffff00");
   }
 }
