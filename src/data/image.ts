@@ -77,3 +77,54 @@ export async function decodeIndexedPng(png: Uint8Array): Promise<IndexedImage> {
   }
   return { width, height, palette, pixels };
 }
+
+const CRC = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+
+function crc32(bytes: Uint8Array): number {
+  let c = 0xffffffff;
+  for (const b of bytes) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function chunk(type: string, body: Uint8Array): Uint8Array {
+  const out = new Uint8Array(12 + body.length);
+  const v = new DataView(out.buffer);
+  v.setUint32(0, body.length);
+  for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+  out.set(body, 8);
+  v.setUint32(8 + body.length, crc32(out.subarray(4, 8 + body.length)));
+  return out;
+}
+
+export async function encodeIndexedPng(img: IndexedImage): Promise<Uint8Array> {
+  const { width, height, palette, pixels } = img;
+  const ihdr = new Uint8Array(13);
+  const v = new DataView(ihdr.buffer);
+  v.setUint32(0, width);
+  v.setUint32(4, height);
+  ihdr[8] = 8;
+  ihdr[9] = 3;
+  const raw = new Uint8Array((width + 1) * height);
+  for (let y = 0; y < height; y++) raw.set(pixels.subarray(y * width, (y + 1) * width), y * (width + 1) + 1);
+  const stream = new Blob([raw as BlobPart]).stream().pipeThrough(new CompressionStream("deflate"));
+  const idat = new Uint8Array(await new Response(stream).arrayBuffer());
+  const parts = [
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", ihdr),
+    chunk("PLTE", Uint8Array.from(palette.flat())),
+    chunk("tRNS", new Uint8Array([0])),
+    chunk("IDAT", idat),
+    chunk("IEND", new Uint8Array()),
+  ];
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}

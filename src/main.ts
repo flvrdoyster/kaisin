@@ -32,7 +32,8 @@ function imageList(): string[] {
   return names;
 }
 
-const OPTIONAL_IMAGES = ["KIRI.png", "KIRI_FACE.png"];
+const KIRI_SOURCE = ["localhost", "127.0.0.1"].includes(location.hostname) && new URLSearchParams(location.search).has("base") ? "KIRI_BASE.png" : "KIRI.png";
+const OPTIONAL_IMAGES = [KIRI_SOURCE, "KIRI_FACE.png"];
 
 async function fetchFile(root: string, name: string): Promise<Uint8Array> {
   const res = await fetch(`${root}/${name}`);
@@ -86,9 +87,10 @@ async function loadFiles(): Promise<Loaded> {
       const res = await fetch(`assets/gfx/${name}`);
       if (!res.ok) return;
       const img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
-      paletteSizes.set(name, img.palette.length);
+      const key = name === KIRI_SOURCE ? "KIRI.png" : name;
+      paletteSizes.set(key, img.palette.length);
       img.palette = img.palette.slice(0, 16);
-      images.set(name, img);
+      images.set(key, img);
     }),
   );
   const optional = { kiri: images.get("KIRI.png"), face: images.get("KIRI_FACE.png"), paletteSizes };
@@ -141,6 +143,11 @@ const DEV = ["localhost", "127.0.0.1"].includes(location.hostname);
 
 async function boot() {
   const params = new URLSearchParams(location.search);
+  if (DEV && params.get("pose") === "kiri") {
+    const { startPoser } = await import("./dev/poser/ui.ts");
+    await startPoser();
+    return;
+  }
   const status = document.getElementById("status")!;
   status.textContent = "불러오는 중…";
   const textTable = await (await fetch("assets/text/texts.tsv")).text();
@@ -222,6 +229,7 @@ async function boot() {
   addEventListener("pagehide", () => game.autoPause());
 
   const hooks: DevHooks = {
+    watch: [`gfx/${KIRI_SOURCE}`, "gfx/KIRI_FACE.png", "characters/kiri.json"],
     warnings: () => [
       ...checkSheet(optional.kiri, optional.paletteSizes.get("KIRI.png") ?? 0, data.i32("rectSMASH"), images.get("SMASH.png")!),
       ...checkFace(optional.face, optional.paletteSizes.get("KIRI_FACE.png") ?? 0),
@@ -230,6 +238,7 @@ async function boot() {
       const res = await fetch(`assets/gfx/${name}`, { cache: "no-store" });
       if (!res.ok) return;
       const img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
+      if (name === KIRI_SOURCE) name = "KIRI.png";
       optional.paletteSizes.set(name, img.palette.length);
       img.palette = img.palette.slice(0, 16);
       images.set(name, img);

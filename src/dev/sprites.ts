@@ -10,13 +10,12 @@ const ROWS = [{ y: 0, h: 96 }, { y: 96, h: 128 }, { y: 224, h: 160 }, { y: 384, 
 const STEP_TICKS = 5;
 
 export interface DevHooks {
+  watch: string[];
   warnings(): string[];
   refresh(name: string): Promise<void>;
   reloadDef(): Promise<void>;
   save(def: CharDef): Promise<boolean>;
 }
-
-const WATCH = ["gfx/KIRI.png", "gfx/KIRI_FACE.png", "characters/kiri.json"];
 
 export class SpriteViewer {
   private tick = 0;
@@ -61,7 +60,7 @@ export class SpriteViewer {
   }
 
   private async watch() {
-    for (const f of WATCH) {
+    for (const f of this.hooks.watch) {
       let mtime = -1;
       try {
         const res = await fetch(`/dev/stat?f=${encodeURIComponent(f)}`, { cache: "no-store" });

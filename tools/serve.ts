@@ -19,7 +19,8 @@ if (process.argv.includes("--watch")) {
   spawn(join(root, "node_modules/.bin/tsc"), ["--watch", "--preserveWatchOutput"], { cwd: root, stdio: "inherit" });
 }
 
-const SAVABLE = /^\/dev\/(characters\/[a-z]+\.json)$/;
+const SAVABLE = /^\/dev\/(characters\/[a-z-]+\.json)$/;
+const SAVABLE_PNG = /^\/dev\/(gfx\/KIRI_BASE\.png)$/;
 const loopback = (a?: string) => a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
 
 createServer((req, res) => {
@@ -40,6 +41,21 @@ createServer((req, res) => {
       }
       return;
     }
+    const png = SAVABLE_PNG.exec(url.pathname);
+    if (req.method === "PUT" && png) {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        const body = Buffer.concat(chunks);
+        if (body.length > 2_000_000 || !body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+          res.writeHead(400).end();
+          return;
+        }
+        writeFileSync(join(root, "assets", png[1]), body);
+        res.writeHead(200).end("ok");
+      });
+      return;
+    }
     const m = SAVABLE.exec(url.pathname);
     if (req.method === "PUT" && m) {
       const chunks: Buffer[] = [];
@@ -48,7 +64,7 @@ createServer((req, res) => {
         try {
           const body = Buffer.concat(chunks).toString("utf8");
           JSON.parse(body);
-          if (body.length > 100000) throw new Error();
+          if (body.length > 500000) throw new Error();
           const dir = join(root, "assets/characters");
           mkdirSync(dir, { recursive: true });
           writeFileSync(join(root, "assets", m[1]), body);
