@@ -51,6 +51,15 @@ export type PoseName = (typeof POSES)[number];
 export const POSE_LABELS: Record<PoseName, string> = { stand: "정지", walk1: "걷기1", walk2: "걷기2", walk3: "걷기3", walk4: "걷기4" };
 const POSE_COLUMN: Record<PoseName, number> = { stand: 0, walk1: 2, walk2: 6, walk3: 10, walk4: 14 };
 
+// 방향별 자세: "walk1.2"처럼 "자세.방향" 키가 있으면 그 방향에서는 공통 자세 대신 그것을 쓴다.
+export const dirPoseKey = (pose: string, dir: number) => `${pose}.${dir}`;
+export function resolvePose(m: Model, pose: string | null, dir: number): string | null {
+  if (pose === null) return null;
+  const key = dirPoseKey(pose, dir);
+  return m.poses[key] ? key : pose;
+}
+const POSE_KEY = /^(stand|walk[1-4])(\.[0-3])?$/;
+
 export interface CellJob {
   cell: number;
   pose: PoseName;
@@ -207,6 +216,7 @@ export function parseModel(json: unknown): Model | null {
   for (const p of m.parts) if (p.shadeBy !== undefined && (!ids.has(p.shadeBy) || p.shadeBy === p.id)) delete p.shadeBy;
   const poses: Model["poses"] = {};
   for (const name of POSES) poses[name] = m.poses?.[name] ?? {};
+  for (const [key, v] of Object.entries(m.poses ?? {})) if (POSE_KEY.test(key) && !(key in poses)) poses[key] = v;
   return { ...(m as Model), yaw, poses };
 }
 
@@ -217,7 +227,8 @@ export function formatModel(m: Model): string {
   const parts = m.parts.map(
     (p) => `  {"id": ${JSON.stringify(p.id)}, "parent": ${JSON.stringify(p.parent)}, "pos": ${vec(p.pos)}, "rot": ${vec(p.rot)}, "size": ${vec(p.size)}, "ramp": [${p.ramp.join(", ")}]${p.shape && p.shape !== "ellipsoid" ? `, "shape": "${p.shape}"` : ""}${p.grad ? `, "grad": ${num(p.grad)}` : ""}${p.line ? `, "line": true` : ""}${p.shadeBy ? `, "shadeBy": ${JSON.stringify(p.shadeBy)}` : ""}${p.image ? `, "image": ${JSON.stringify(p.image)}` : ""}}`,
   );
-  const poses = POSES.map((name) => {
+  const keys = [...POSES.flatMap((name) => [name, ...[0, 1, 2, 3].map((d) => dirPoseKey(name, d)).filter((k) => m.poses[k])])];
+  const poses = keys.map((name) => {
     const entries = Object.entries(m.poses[name] ?? {})
       .filter(([, v]) => v.pos.some((n) => n !== 0) || v.rot.some((n) => n !== 0))
       .map(([id, v]) => `   ${JSON.stringify(id)}: {"pos": ${vec(v.pos)}, "rot": ${vec(v.rot)}}`);

@@ -1,4 +1,4 @@
-import { SOLIDS, apply, applyT, place, type Model, type Placed, type Shape, type Vec3 } from "./model.ts";
+import { SOLIDS, apply, applyT, place, resolvePose, type Model, type Placed, type Shape, type Vec3 } from "./model.ts";
 
 export interface Frame {
   width: number;
@@ -191,7 +191,7 @@ function bounds(placed: Placed[], up: Vec3): Bound[] {
 
 export function rasterize(m: Model, pose: string | null, dir: number, width: number, height: number, cx: number, cy: number, scale = 1, cam?: Cam): Frame {
   const { up, d } = view(cam?.pitch ?? m.pitch);
-  const placed = place(m, pose, cam?.yaw ?? m.yaw[dir]);
+  const placed = place(m, resolvePose(m, pose, dir), cam?.yaw ?? m.yaw[dir]);
   const bs = bounds(placed, up);
   const byId = new Map(placed.map((pl) => [pl.part.id, pl.index]));
   const decals = new Map<number, Placed[]>();

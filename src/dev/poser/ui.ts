@@ -1,7 +1,7 @@
 import { GAME_TABLES } from "../../data/gameTables.ts";
 import { decodeIndexedPng, encodeIndexedPng, type IndexedImage } from "../../data/image.ts";
 import {
-  POSES, POSE_LABELS, SHAPES, SOLIDS, apply, applyT, defaultModel, formatModel, mirrorPose, parentFrame, parseModel, place, rotation, walkJobs,
+  POSES, POSE_LABELS, SHAPES, SOLIDS, apply, applyT, defaultModel, dirPoseKey, formatModel, mirrorPose, parentFrame, parseModel, place, resolvePose, rotation, walkJobs,
   type CellJob, type Model, type Part, type PartPose, type PoseName, type Shape, type Vec3,
 } from "./model.ts";
 import { colorize, project, rasterize, view, type Cam } from "./raster.ts";
@@ -137,6 +137,18 @@ class Poser {
     return this.model.parts[Math.min(this.sel, this.model.parts.length - 1)];
   }
 
+  // 지금 방향에서 실제로 쓰는 자세 키(방향별 자세가 있으면 그것).
+  private poseKey(): string | null {
+    return resolvePose(this.model, this.poseName(), this.dir);
+  }
+
+  // 편집할 방향별 자세. 처음 고칠 때 공통 자세를 복사해 만든다.
+  private dirPose(): Record<string, PartPose> {
+    const name = this.poseName()!;
+    const key = dirPoseKey(name, this.dir);
+    return (this.model.poses[key] ??= structuredClone(this.model.poses[name] ?? {}));
+  }
+
   private poseName(): PoseName | null {
     return this.mode === "model" ? null : this.mode;
   }
@@ -174,8 +186,7 @@ class Poser {
   }
 
   private poseOf(id: string): PartPose {
-    const name = this.poseName()!;
-    const pose = (this.model.poses[name] ??= {});
+    const pose = this.dirPose();
     return (pose[id] ??= { pos: [0, 0, 0], rot: [0, 0, 0] });
   }
 
@@ -314,7 +325,7 @@ class Poser {
   }
 
   private handles(cam: Cam): Handle[] {
-    const pl = place(this.model, this.poseName(), cam.yaw).find((q) => q.index === this.sel);
+    const pl = place(this.model, this.poseKey(), cam.yaw).find((q) => q.index === this.sel);
     if (!pl) return [];
     const c = pl.center;
     const add = (v: Vec3, k: number): Vec3 => [c[0] + v[0] * k, c[1] + v[1] * k, c[2] + v[2] * k];
@@ -342,7 +353,7 @@ class Poser {
   }
 
   private drawHandles(ctx: CanvasRenderingContext2D, spec: ViewSpec) {
-    const pl = place(this.model, this.poseName(), spec.cam.yaw).find((q) => q.index === this.sel);
+    const pl = place(this.model, this.poseKey(), spec.cam.yaw).find((q) => q.index === this.sel);
     if (!pl) return;
     const [cx, cy] = spec.at(pl.center);
     ctx.save();
@@ -419,7 +430,7 @@ class Poser {
     g.y = my;
     if (g.handle.kind === "move") {
       const d = g.handle.dir;
-      const local = applyT(parentFrame(this.model, this.poseName(), g.spec.cam.yaw, this.part.id), [d[0] * t, d[1] * t, d[2] * t]);
+      const local = applyT(parentFrame(this.model, this.poseKey(), g.spec.cam.yaw, this.part.id), [d[0] * t, d[1] * t, d[2] * t]);
       const target = this.target();
       for (let i = 0; i < 3; i++) target.pos[i] += local[i];
     } else {
@@ -548,7 +559,7 @@ class Poser {
       t.rot[0] += dy * 6;
     } else {
       const world = this.screenDelta(dx, dy, this.drag.kind);
-      const local = applyT(parentFrame(this.model, this.poseName(), this.model.yaw[this.dir], this.part.id), world);
+      const local = applyT(parentFrame(this.model, this.poseKey(), this.model.yaw[this.dir], this.part.id), world);
       for (let i = 0; i < 3; i++) t.pos[i] += local[i];
     }
     this.changed();
@@ -627,7 +638,7 @@ class Poser {
         t.rot[1] += a[0] * step * 5;
         t.rot[0] += a[1] * step * 5;
       } else {
-        const local = applyT(parentFrame(this.model, this.poseName(), this.model.yaw[this.dir], this.part.id), this.screenDelta(a[0] * step, a[1] * step, "move"));
+        const local = applyT(parentFrame(this.model, this.poseKey(), this.model.yaw[this.dir], this.part.id), this.screenDelta(a[0] * step, a[1] * step, "move"));
         for (let i = 0; i < 3; i++) t.pos[i] = Math.round((t.pos[i] + local[i]) * 2) / 2;
       }
       this.changed();
@@ -874,14 +885,14 @@ class Poser {
             const name = this.poseName();
             if (!name) return;
             this.snapshot();
-            delete this.model.poses[name][this.part.id];
+            delete this.dirPose()[this.part.id];
             this.changed();
           }),
           button("포즈 전체 초기화", () => {
             const name = this.poseName();
             if (!name) return;
             this.snapshot();
-            this.model.poses[name] = {};
+            delete this.model.poses[dirPoseKey(name, this.dir)];
             this.changed();
           }),
         ),
@@ -893,14 +904,14 @@ class Poser {
             const name = this.poseName();
             if (!name) return;
             this.snapshot();
-            this.model.poses[name] = mirrorPose(structuredClone(this.model.poses[mirrorFrom.value] ?? {}));
+            this.model.poses[dirPoseKey(name, this.dir)] = mirrorPose(structuredClone(this.model.poses[resolvePose(this.model, mirrorFrom.value, this.dir)!] ?? {}));
             this.changed();
           }),
           button("그대로 복사", () => {
             const name = this.poseName();
             if (!name) return;
             this.snapshot();
-            this.model.poses[name] = structuredClone(this.model.poses[mirrorFrom.value] ?? {});
+            this.model.poses[dirPoseKey(name, this.dir)] = structuredClone(this.model.poses[resolvePose(this.model, mirrorFrom.value, this.dir)!] ?? {});
             this.changed();
           }),
         ),
@@ -932,7 +943,7 @@ class Poser {
           "데칼: 부모 표면에 그림(image)을 지역 +Z 방향으로 투영, 크기는 폭·높이·투영 깊이",
           "M: 모델 · 1~5: 포즈 · Q/W: 방향 · 오른쪽 시트 클릭: 칸 선택",
           "O: 스마슈 겹치기 · H: 고해상도/1배율 · Ctrl+Z: 되돌리기",
-          "포즈 값은 모델 기본 자세에 더하는 차이값",
+          "포즈 값은 모델 기본 자세에 더하는 차이값, 방향마다 따로 저장(\"자세.방향\" 키, 없으면 공통 자세)",
         ].join("<br>"),
       }),
     );
