@@ -202,6 +202,13 @@ export function rasterize(m: Model, pose: string | null, dir: number, width: num
   }
   const ll = Math.hypot(...m.light) || 1;
   const L: Vec3 = [m.light[0] / ll, m.light[1] / ll, m.light[2] / ll];
+  // 명암 기준 부위: 맞은 점을 그 부위의 타원체 좌표로 옮겨 법선(타원체 기울기)과 위아래 위치를 대신 쓴다.
+  const proxy = new Map<number, Placed>();
+  for (const pl of placed) {
+    if (!pl.part.shadeBy) continue;
+    const at = byId.get(pl.part.shadeBy);
+    if (at !== undefined) proxy.set(pl.index, placed[at]);
+  }
   const n = width * height;
   const f: Frame = { width, height, part: new Int16Array(n).fill(-1), depth: new Float32Array(n).fill(Infinity), shade: new Float32Array(n), tex: new Int16Array(n).fill(-1) };
   for (let y = 0; y < height; y++) {
@@ -217,7 +224,18 @@ export function rasterize(m: Model, pose: string | null, dir: number, width: num
         f.depth[i] = h[0];
         f.part[i] = b.pl.index;
         const g = b.pl.part.grad ?? 0;
-        f.shade[i] = ((h[1][0] * L[0] + h[1][1] * L[1] + h[1][2] * L[2] + 1) / 2) * (1 - g) + (1 - h[2]) * g;
+        let nrm = h[1];
+        let pos = h[2];
+        const px = proxy.get(b.pl.index);
+        if (px) {
+          const s = px.part.size;
+          const l = applyT(px.rot, [o[0] + h[0] * d[0] - px.center[0], o[1] + h[0] * d[1] - px.center[1], o[2] + h[0] * d[2] - px.center[2]]);
+          const w = apply(px.rot, [l[0] / (s[0] * s[0]), l[1] / (s[1] * s[1]), l[2] / (s[2] * s[2])]);
+          const wl = Math.hypot(w[0], w[1], w[2]) || 1;
+          nrm = [w[0] / wl, w[1] / wl, w[2] / wl];
+          pos = Math.min(1, Math.max(0, (1 - l[1] / s[1]) / 2));
+        }
+        f.shade[i] = ((nrm[0] * L[0] + nrm[1] * L[1] + nrm[2] * L[2] + 1) / 2) * (1 - g) + (1 - pos) * g;
       }
       const on = f.part[i] >= 0 ? decals.get(f.part[i]) : undefined;
       if (on) {

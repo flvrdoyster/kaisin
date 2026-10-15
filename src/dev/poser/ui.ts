@@ -678,6 +678,7 @@ class Poser {
   private partList = el("select", { size: 10 });
   private parentSel = el("select");
   private shapeSel = el("select");
+  private shadeSel = el("select");
   private sizeLabel = el("span", { textContent: "크기" });
   private modeSel = el("select");
   private rampInput = el("input", { type: "text" });
@@ -760,6 +761,12 @@ class Poser {
       else this.part.shape = shape;
       this.changed();
     });
+    this.shadeSel.addEventListener("change", () => {
+      this.snapshot();
+      if (this.shadeSel.value) this.part.shadeBy = this.shadeSel.value;
+      else delete this.part.shadeBy;
+      this.changed();
+    });
     this.rampInput.addEventListener("change", () => {
       const ramp = this.rampInput.value.split(/[ ,]+/).filter(Boolean).map(Number);
       if (ramp.length === 0 || ramp.some((n) => !Number.isInteger(n) || n < 1 || n > 15)) return;
@@ -772,7 +779,10 @@ class Poser {
       if (!id || this.model.parts.some((p) => p.id === id)) return;
       this.snapshot();
       const old = this.part.id;
-      for (const p of this.model.parts) if (p.parent === old) p.parent = id;
+      for (const p of this.model.parts) {
+        if (p.parent === old) p.parent = id;
+        if (p.shadeBy === old) p.shadeBy = id;
+      }
       for (const pose of Object.values(this.model.poses)) {
         if (pose[old]) {
           pose[id] = pose[old];
@@ -851,6 +861,7 @@ class Poser {
         this.vecRow("회전", "rot", () => this.target().rot, 5),
         this.vecRow(this.sizeLabel, "size", () => this.part.size),
         el("label", {}, "색(어둠→밝음)", this.rampInput),
+        el("label", { title: "이 부위의 전체 형태를 기준으로 명암을 칠합니다(머리카락 가닥을 머리 돔 하나로 비추기)" }, "명암 기준", this.shadeSel),
       ),
       el(
         "fieldset",
@@ -949,6 +960,8 @@ class Poser {
     this.partList.selectedIndex = this.sel;
     this.parentSel.replaceChildren(el("option", { value: "", textContent: "(없음)" }), ...ids.filter((id) => id !== this.part.id).map((id) => el("option", { value: id, textContent: id })));
     this.parentSel.value = this.part.parent ?? "";
+    this.shadeSel.replaceChildren(el("option", { value: "", textContent: "(자기 형태)" }), ...ids.filter((id) => id !== this.part.id).map((id) => el("option", { value: id, textContent: id })));
+    this.shadeSel.value = this.part.shadeBy ?? "";
     this.shapeSel.value = this.part.shape ?? "ellipsoid";
     this.sizeLabel.textContent =
       this.part.shape === "strand" ? "밑·길이·끝" : this.part.shape === "decal" ? "폭·높이·깊이" : this.part.shape && SOLIDS.has(this.part.shape) ? "반 크기" : "반지름";
@@ -961,6 +974,7 @@ class Poser {
     const modelOnly = this.mode === "model";
     for (const i of [0, 1, 2]) this.inputs.get(`size${i}`)!.disabled = !modelOnly;
     this.rampInput.disabled = !modelOnly;
+    this.shadeSel.disabled = !modelOnly;
     this.syncExtra();
   }
 }

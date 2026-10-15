@@ -11,6 +11,7 @@ export interface Part {
   grad?: number;
   line?: boolean;
   image?: string[];
+  shadeBy?: string; // 명암을 이 부위의 전체 형태(타원체로 보고)에서 받는다. 머리카락 가닥을 한 덩어리로 비출 때 쓴다.
 }
 
 export type Shape = "ellipsoid" | "strand" | "decal" | "dome" | "box" | "cylinder" | "cone" | "capsule" | "torus";
@@ -198,10 +199,12 @@ export function parseModel(json: unknown): Model | null {
     if (p.shape !== undefined && !(p.shape in SHAPES)) return null;
     if (p.grad !== undefined && typeof p.grad !== "number") return null;
     if (p.line !== undefined && typeof p.line !== "boolean") return null;
+    if (p.shadeBy !== undefined && typeof p.shadeBy !== "string") return null;
     if (p.image !== undefined && (!Array.isArray(p.image) || p.image.length === 0 || !p.image.every((r) => typeof r === "string" && r.length === p.image![0].length && /^[0-9a-f.]+$/.test(r)))) return null;
     ids.add(p.id);
   }
   for (const p of m.parts) if (p.parent !== null && !ids.has(p.parent)) return null;
+  for (const p of m.parts) if (p.shadeBy !== undefined && (!ids.has(p.shadeBy) || p.shadeBy === p.id)) delete p.shadeBy;
   const poses: Model["poses"] = {};
   for (const name of POSES) poses[name] = m.poses?.[name] ?? {};
   return { ...(m as Model), yaw, poses };
@@ -212,7 +215,7 @@ const vec = (v: number[]) => `[${v.map(num).join(", ")}]`;
 
 export function formatModel(m: Model): string {
   const parts = m.parts.map(
-    (p) => `  {"id": ${JSON.stringify(p.id)}, "parent": ${JSON.stringify(p.parent)}, "pos": ${vec(p.pos)}, "rot": ${vec(p.rot)}, "size": ${vec(p.size)}, "ramp": [${p.ramp.join(", ")}]${p.shape && p.shape !== "ellipsoid" ? `, "shape": "${p.shape}"` : ""}${p.grad ? `, "grad": ${num(p.grad)}` : ""}${p.line ? `, "line": true` : ""}${p.image ? `, "image": ${JSON.stringify(p.image)}` : ""}}`,
+    (p) => `  {"id": ${JSON.stringify(p.id)}, "parent": ${JSON.stringify(p.parent)}, "pos": ${vec(p.pos)}, "rot": ${vec(p.rot)}, "size": ${vec(p.size)}, "ramp": [${p.ramp.join(", ")}]${p.shape && p.shape !== "ellipsoid" ? `, "shape": "${p.shape}"` : ""}${p.grad ? `, "grad": ${num(p.grad)}` : ""}${p.line ? `, "line": true` : ""}${p.shadeBy ? `, "shadeBy": ${JSON.stringify(p.shadeBy)}` : ""}${p.image ? `, "image": ${JSON.stringify(p.image)}` : ""}}`,
   );
   const poses = POSES.map((name) => {
     const entries = Object.entries(m.poses[name] ?? {})
