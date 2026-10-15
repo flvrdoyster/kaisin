@@ -1,10 +1,10 @@
 import { GAME_TABLES } from "../../data/gameTables.ts";
 import { decodeIndexedPng, encodeIndexedPng, type IndexedImage } from "../../data/image.ts";
 import {
-  POSES, POSE_LABELS, SHAPES, applyT, defaultModel, formatModel, mirrorPose, parentFrame, parseModel, walkJobs,
+  POSES, POSE_LABELS, SHAPES, SOLIDS, apply, applyT, defaultModel, formatModel, mirrorPose, parentFrame, parseModel, place, rotation, walkJobs,
   type CellJob, type Model, type Part, type PartPose, type PoseName, type Shape, type Vec3,
 } from "./model.ts";
-import { colorize, rasterize, view } from "./raster.ts";
+import { colorize, project, rasterize, view, type Cam } from "./raster.ts";
 
 const MODEL_URL = "assets/characters/kiri-model.json";
 const DIRS = ["위", "오른쪽", "아래", "왼쪽"];
@@ -18,7 +18,7 @@ const CSS = `
 body.poser { display: grid; grid-template-columns: auto 340px; gap: 12px; align-items: start; justify-content: start; padding: 12px; box-sizing: border-box; height: auto; min-height: 100%; user-select: none; touch-action: auto; overflow: auto; font-size: 13px; }
 .poser canvas { image-rendering: pixelated; width: auto; aspect-ratio: auto; background: #222; display: block; }
 .poser .views { display: flex; flex-direction: column; gap: 8px; }
-.poser .row { display: flex; gap: 8px; align-items: flex-start; }
+.poser .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .poser .panel { display: flex; flex-direction: column; gap: 8px; }
 .poser fieldset { border: 1px solid #444; border-radius: 6px; padding: 6px 8px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .poser legend { color: #aaa; padding: 0 4px; }
@@ -36,6 +36,26 @@ body.poser { display: grid; grid-template-columns: auto 340px; gap: 12px; align-
 `;
 
 type Mode = "model" | PoseName;
+
+// 화면 하나(확대 뷰·자유 시점)의 시점과 월드→화면 좌표 변환.
+interface ViewSpec {
+  cam: Cam;
+  scale: number;
+  at(p: Vec3): [number, number];
+}
+
+// 선택 부위의 손잡이: 이동 화살표(캐릭터 기준 X·Y·Z)와 크기 손잡이(부위 지역 축).
+interface Handle {
+  kind: "move" | "size";
+  axis: number;
+  point: Vec3;
+  dir: Vec3;
+  factor: number;
+}
+
+const AXIS_COLORS = ["#ff5a5a", "#5adc5a", "#5a9cff"];
+const ARROW = 12;
+const GRAB = 7;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Record<string, unknown> = {}, ...kids: (Node | string)[]): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -62,6 +82,11 @@ class Poser {
   private readonly main = el("canvas", { width: VIEW, height: VIEW });
   private readonly strip = el("canvas");
   private readonly animView = el("canvas");
+  private readonly free = el("canvas", { width: VIEW, height: VIEW, title: "자유 시점: 드래그로 돌리기 · 휠 확대 · 더블클릭 게임 시점" });
+  private freeCam: Cam | null = null;
+  private freeZoom = 5;
+  private orbit: { x: number; y: number; moved: boolean } | null = null;
+  private grab: { spec: ViewSpec; canvas: HTMLCanvasElement; handle: Handle; x: number; y: number; base: string } | null = null;
   private readonly panel = el("div", { className: "panel" });
   private readonly status = el("div", { className: "status" });
 
@@ -75,12 +100,23 @@ class Poser {
     document.body.className = "poser";
     document.body.replaceChildren(
       el("style", { textContent: CSS }),
-      el("div", { className: "views" }, el("div", { className: "row" }, this.main, this.animView), this.strip),
+      el("div", { className: "views" }, el("div", { className: "row" }, this.main, this.free, this.animView), this.strip),
       this.panel,
     );
     this.main.addEventListener("pointerdown", (e) => this.down(e));
+    this.free.addEventListener("pointerdown", (e) => this.freeDown(e));
+    this.free.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      this.freeZoom = Math.max(2, Math.min(14, this.freeZoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+      this.drawFree();
+    }, { passive: false });
+    this.free.addEventListener("dblclick", () => {
+      this.freeCam = null;
+      this.drawFree();
+    });
+    this.free.addEventListener("contextmenu", (e) => e.preventDefault());
     addEventListener("pointermove", (e) => this.moveDrag(e));
-    addEventListener("pointerup", () => this.endDrag());
+    addEventListener("pointerup", (e) => this.endDrag(e));
     this.main.addEventListener("contextmenu", (e) => e.preventDefault());
     this.main.addEventListener("wheel", (e) => this.wheel(e), { passive: false });
     this.strip.addEventListener("pointerdown", (e) => this.pickStrip(e));
@@ -222,10 +258,192 @@ class Poser {
     ctx.strokeRect(ox - 0.5, oy - 0.5, w * ZOOM + 1, h * ZOOM + 1);
     ctx.fillStyle = "#ff0";
     ctx.fillRect(ox + cx * ZOOM - 1, oy + cy * ZOOM - 1, 3, 3);
+    this.drawHandles(ctx, this.mainSpec());
     ctx.fillStyle = "#ccc";
     ctx.font = "12px system-ui";
     const label = this.mode === "model" ? "모델(기본 자세)" : POSE_LABELS[this.mode];
     ctx.fillText(`${label} · ${DIRS[this.dir]} · 칸 ${cell} · 선택 ${this.part.id}`, 8, 16);
+  }
+
+  private mainSpec(): ViewSpec {
+    const { ox, oy, cx, cy } = this.mainOrigin();
+    const cam = { pitch: this.model.pitch, yaw: this.model.yaw[this.dir] };
+    return {
+      cam,
+      scale: ZOOM,
+      at: (p) => {
+        const s = project(cam.pitch, p);
+        return [ox + (s[0] + cx) * ZOOM, oy + (s[1] + cy) * ZOOM];
+      },
+    };
+  }
+
+  private freeSpec(): ViewSpec {
+    const cam = this.freeCam ?? { pitch: this.model.pitch, yaw: this.model.yaw[this.dir] };
+    const z = this.freeZoom;
+    return {
+      cam,
+      scale: z,
+      at: (p) => {
+        const s = project(cam.pitch, p);
+        return [VIEW / 2 + s[0] * z, VIEW / 2 + s[1] * z];
+      },
+    };
+  }
+
+  // 자유 시점: 게임 시점과 같은 부위 모양을 아무 각도에서나 본다(외곽선 없이 고해상도).
+  private drawFree() {
+    const ctx = this.free.getContext("2d")!;
+    const spec = this.freeSpec();
+    const z = spec.scale;
+    const f = rasterize(this.model, this.poseName(), this.dir, VIEW, VIEW, VIEW / 2 / z, VIEW / 2 / z, z, spec.cam);
+    const px = colorize(this.model, f, false);
+    const img = new ImageData(VIEW, VIEW);
+    for (let i = 0; i < px.length; i++) {
+      const c = this.rgba(px[i]);
+      if (f.part[i] === this.sel) [0, 1, 2].forEach((k) => (c[k] = Math.round(c[k] * 0.55 + [255, 0, 255][k] * 0.45)));
+      if (f.part[i] < 0) c.splice(0, 4, 36, 36, 44, 255);
+      img.data.set(c, i * 4);
+    }
+    ctx.putImageData(img, 0, 0);
+    this.drawHandles(ctx, spec);
+    ctx.fillStyle = "#ccc";
+    ctx.font = "12px system-ui";
+    const tag = this.freeCam ? `자유 시점 · 기울기 ${Math.round(spec.cam.pitch)}° · 회전 ${Math.round(spec.cam.yaw)}°` : "자유 시점 (게임 시점과 같음)";
+    ctx.fillText(`${tag} · 드래그 돌리기 · 휠 확대 · 더블클릭 되돌리기`, 8, 16);
+  }
+
+  private handles(cam: Cam): Handle[] {
+    const pl = place(this.model, this.poseName(), cam.yaw).find((q) => q.index === this.sel);
+    if (!pl) return [];
+    const c = pl.center;
+    const add = (v: Vec3, k: number): Vec3 => [c[0] + v[0] * k, c[1] + v[1] * k, c[2] + v[2] * k];
+    const rootRot = rotation([0, cam.yaw, 0]);
+    const out: Handle[] = [0, 1, 2].map((i) => {
+      const a = apply(rootRot, [i === 0 ? 1 : 0, i === 1 ? 1 : 0, i === 2 ? 1 : 0]);
+      return { kind: "move", axis: i, point: add(a, ARROW), dir: a, factor: 1 };
+    });
+    if (this.mode !== "model") return out;
+    const s = pl.part.size;
+    const ax = (i: number, sign = 1) => apply(pl.rot, [i === 0 ? sign : 0, i === 1 ? sign : 0, i === 2 ? sign : 0]);
+    if (pl.part.shape === "strand") {
+      out.push({ kind: "size", axis: 0, point: add(ax(0), s[0]), dir: ax(0), factor: 1 });
+      out.push({ kind: "size", axis: 1, point: add(ax(1, -1), s[1]), dir: ax(1, -1), factor: 1 });
+      const tip = add(ax(1, -1), s[1]);
+      const r = ax(0);
+      out.push({ kind: "size", axis: 2, point: [tip[0] + r[0] * s[2], tip[1] + r[1] * s[2], tip[2] + r[2] * s[2]], dir: r, factor: 1 });
+    } else if (pl.part.shape === "decal") {
+      out.push({ kind: "size", axis: 0, point: add(ax(0), s[0] / 2), dir: ax(0), factor: 2 });
+      out.push({ kind: "size", axis: 1, point: add(ax(1), s[1] / 2), dir: ax(1), factor: 2 });
+    } else {
+      for (const i of [0, 1, 2]) out.push({ kind: "size", axis: i, point: add(ax(i), s[i]), dir: ax(i), factor: 1 });
+    }
+    return out;
+  }
+
+  private drawHandles(ctx: CanvasRenderingContext2D, spec: ViewSpec) {
+    const pl = place(this.model, this.poseName(), spec.cam.yaw).find((q) => q.index === this.sel);
+    if (!pl) return;
+    const [cx, cy] = spec.at(pl.center);
+    ctx.save();
+    ctx.lineWidth = 2;
+    for (const h of this.handles(spec.cam)) {
+      const [x, y] = spec.at(h.point);
+      ctx.strokeStyle = ctx.fillStyle = AXIS_COLORS[h.axis];
+      if (h.kind === "move") {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(x - 4, y - 4, 8, 8);
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - 4.5, y - 4.5, 9, 9);
+        ctx.lineWidth = 2;
+      }
+    }
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    ctx.restore();
+  }
+
+  private canvasPoint(canvas: HTMLCanvasElement, e: PointerEvent | MouseEvent): [number, number] {
+    const b = canvas.getBoundingClientRect();
+    return [((e.clientX - b.left) * canvas.width) / b.width, ((e.clientY - b.top) * canvas.height) / b.height];
+  }
+
+  private hitHandle(canvas: HTMLCanvasElement, spec: ViewSpec, e: PointerEvent): Handle | null {
+    const [mx, my] = this.canvasPoint(canvas, e);
+    let best: Handle | null = null;
+    let bestD = GRAB;
+    for (const h of this.handles(spec.cam)) {
+      const [x, y] = spec.at(h.point);
+      const dist = Math.hypot(x - mx, y - my);
+      if (dist <= bestD) {
+        best = h;
+        bestD = dist;
+      }
+    }
+    return best;
+  }
+
+  private startGrab(canvas: HTMLCanvasElement, spec: ViewSpec, e: PointerEvent): boolean {
+    if (e.button !== 0) return false;
+    const handle = this.hitHandle(canvas, spec, e);
+    if (!handle) return false;
+    const [x, y] = this.canvasPoint(canvas, e);
+    this.grab = { spec, canvas, handle, x, y, base: formatModel(this.model) };
+    return true;
+  }
+
+  // 손잡이 끌기: 마우스 이동을 손잡이 축의 화면 방향에 투영해 월드 길이로 바꾼다.
+  private moveGrab(e: PointerEvent) {
+    const g = this.grab!;
+    const [mx, my] = this.canvasPoint(g.canvas, e);
+    const [ax, ay] = g.spec.at([0, 0, 0]);
+    const [bx, by] = g.spec.at(g.handle.dir);
+    const sx = bx - ax, sy = by - ay;
+    const len2 = sx * sx + sy * sy;
+    if (len2 < 1e-6) return;
+    const t = ((mx - g.x) * sx + (my - g.y) * sy) / len2;
+    if (Math.abs(t) < 0.05) return;
+    if (g.base) {
+      this.history.push(g.base);
+      g.base = "";
+    }
+    g.x = mx;
+    g.y = my;
+    if (g.handle.kind === "move") {
+      const d = g.handle.dir;
+      const local = applyT(parentFrame(this.model, this.poseName(), g.spec.cam.yaw, this.part.id), [d[0] * t, d[1] * t, d[2] * t]);
+      const target = this.target();
+      for (let i = 0; i < 3; i++) target.pos[i] += local[i];
+    } else {
+      const s = this.part.size;
+      s[g.handle.axis] = Math.max(0.5, s[g.handle.axis] + t * g.handle.factor);
+    }
+    this.changed();
+  }
+
+  private freeDown(e: PointerEvent) {
+    if (this.startGrab(this.free, this.freeSpec(), e)) return;
+    this.orbit = { x: e.clientX, y: e.clientY, moved: false };
+  }
+
+  private freePick(e: PointerEvent) {
+    const spec = this.freeSpec();
+    const [mx, my] = this.canvasPoint(this.free, e);
+    const sx = (mx - VIEW / 2) / spec.scale;
+    const sy = (my - VIEW / 2) / spec.scale;
+    const p = rasterize(this.model, this.poseName(), this.dir, 1, 1, 0.5 - sx, 0.5 - sy, 1, spec.cam).part[0];
+    if (p >= 0) {
+      this.sel = p;
+      this.refresh();
+    }
   }
 
   private drawStrip() {
@@ -265,6 +483,7 @@ class Poser {
 
   private refresh() {
     this.drawMain();
+    this.drawFree();
     this.drawStrip();
     this.syncPanel();
     this.status.textContent = this.dirty ? "저장 안 됨 (Ctrl+S)" : this.status.textContent || "";
@@ -289,6 +508,7 @@ class Poser {
   }
 
   private down(e: PointerEvent) {
+    if (this.startGrab(this.main, this.mainSpec(), e)) return;
     const p = this.pick(e);
     if (p >= 0 && !e.shiftKey && e.button === 0) this.sel = p;
     const kind = e.button === 2 || e.altKey ? "rotate" : e.shiftKey ? "depth" : "move";
@@ -297,6 +517,19 @@ class Poser {
   }
 
   private moveDrag(e: PointerEvent) {
+    if (this.grab) return this.moveGrab(e);
+    if (this.orbit) {
+      const dx = e.clientX - this.orbit.x;
+      const dy = e.clientY - this.orbit.y;
+      if (!this.orbit.moved && Math.hypot(dx, dy) < 3) return;
+      this.orbit.moved = true;
+      this.orbit.x = e.clientX;
+      this.orbit.y = e.clientY;
+      const cam = this.freeCam ?? { pitch: this.model.pitch, yaw: this.model.yaw[this.dir] };
+      this.freeCam = { yaw: cam.yaw + dx * 0.6, pitch: Math.max(-85, Math.min(89, cam.pitch + dy * 0.5)) };
+      this.drawFree();
+      return;
+    }
     if (!this.drag) return;
     const b = this.main.getBoundingClientRect();
     const k = VIEW / b.width / ZOOM;
@@ -321,7 +554,20 @@ class Poser {
     this.changed();
   }
 
-  private endDrag() {
+  private endDrag(e: PointerEvent) {
+    if (this.grab) {
+      this.grab = null;
+      this.roundTarget();
+      this.part.size = this.part.size.map((v) => Math.round(v * 2) / 2) as Vec3;
+      this.refresh();
+      return;
+    }
+    if (this.orbit) {
+      const clicked = !this.orbit.moved;
+      this.orbit = null;
+      if (clicked && e.button === 0) this.freePick(e);
+      return;
+    }
     if (!this.drag) return;
     this.drag = null;
     this.roundTarget();
@@ -437,6 +683,7 @@ class Poser {
   private rampInput = el("input", { type: "text" });
   private idInput = el("input", { type: "text" });
   private dirBtns: HTMLButtonElement[] = [];
+  private addBtns: HTMLButtonElement[] = [];
   private swatches: HTMLInputElement[] = [];
 
   private num(key: string, get: () => number, set: (v: number) => void, step = 0.5) {
@@ -486,6 +733,25 @@ class Poser {
       this.changed();
     });
     this.shapeSel.append(...Object.entries(SHAPES).map(([v, t]) => el("option", { value: v, textContent: t })));
+    // 도형 추가: 선택 부위의 자식으로 그 앞쪽 표면에 만든다(묻혀서 안 보이지 않도록).
+    this.addBtns = (Object.keys(SHAPES) as Shape[]).filter((sh) => sh !== "decal").map((shape) => {
+      const b = el("button", { textContent: SHAPES[shape] });
+      b.addEventListener("click", () => {
+        if (this.mode !== "model") return;
+        this.snapshot();
+        const parent = this.part;
+        let n = 1;
+        while (this.model.parts.some((q) => q.id === `${shape}${n}`)) n++;
+        const size: Vec3 = shape === "strand" ? [2.5, 8, 0.5] : [4, 4, 4];
+        // 색은 부모를 물려받으므로 같은 색 표면에 묻히지 않게 외곽선을 켜 둔다.
+        const p: Part = { id: `${shape}${n}`, parent: parent.id, pos: [0, 0, parent.shape === "decal" ? 0 : parent.size[2]], rot: [0, 0, 0], size, ramp: [...parent.ramp], line: true };
+        if (shape !== "ellipsoid") p.shape = shape;
+        this.model.parts.splice(this.sel + 1, 0, p);
+        this.sel++;
+        this.changed();
+      });
+      return b;
+    });
     this.shapeSel.addEventListener("change", () => {
       this.snapshot();
       const shape = this.shapeSel.value as Shape;
@@ -547,6 +813,7 @@ class Poser {
         el("label", {}, "이름", this.idInput),
         el("label", {}, "부모", this.parentSel),
         el("label", {}, "형태", this.shapeSel),
+        el("div", { className: "btns" }, el("span", { textContent: "추가" }), ...this.addBtns),
         el(
           "div",
           { className: "btns" },
@@ -644,6 +911,9 @@ class Poser {
         className: "help",
         innerHTML: [
           "클릭: 부위 선택 · 드래그: 화면 평면 이동",
+          "손잡이: 동그라미 = 이동(빨강 X·초록 Y·파랑 Z, 캐릭터 기준), 네모 = 그 축 크기(모델에서만)",
+          "자유 시점: 드래그로 돌리기 · 휠 확대 · 더블클릭 게임 시점 · 손잡이도 끌 수 있음",
+          "반구·상자·원기둥·원뿔·캡슐·고리: 크기는 세 축 반 크기",
           "Shift+드래그: 깊이 이동 · 우클릭/Alt+드래그: 회전",
           "방향키: 1px 이동(Shift 4px) · Alt+방향키: 회전",
           "휠: 크기(모델에서만) · Tab: 다음 부위",
@@ -680,7 +950,9 @@ class Poser {
     this.parentSel.replaceChildren(el("option", { value: "", textContent: "(없음)" }), ...ids.filter((id) => id !== this.part.id).map((id) => el("option", { value: id, textContent: id })));
     this.parentSel.value = this.part.parent ?? "";
     this.shapeSel.value = this.part.shape ?? "ellipsoid";
-    this.sizeLabel.textContent = this.part.shape === "strand" ? "밑·길이·끝" : this.part.shape === "decal" ? "폭·높이·깊이" : "반지름";
+    this.sizeLabel.textContent =
+      this.part.shape === "strand" ? "밑·길이·끝" : this.part.shape === "decal" ? "폭·높이·깊이" : this.part.shape && SOLIDS.has(this.part.shape) ? "반 크기" : "반지름";
+    this.addBtns.forEach((b) => (b.disabled = this.mode !== "model"));
     this.idInput.value = this.part.id;
     this.rampInput.value = this.part.ramp.join(", ");
     for (const [key, input] of this.inputs) {

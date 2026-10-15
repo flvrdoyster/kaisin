@@ -13,8 +13,20 @@ export interface Part {
   image?: string[];
 }
 
-export type Shape = "ellipsoid" | "strand" | "decal";
-export const SHAPES: Record<Shape, string> = { ellipsoid: "타원체", strand: "가닥", decal: "데칼" };
+export type Shape = "ellipsoid" | "strand" | "decal" | "dome" | "box" | "cylinder" | "cone" | "capsule" | "torus";
+export const SHAPES: Record<Shape, string> = {
+  ellipsoid: "타원체",
+  strand: "가닥",
+  decal: "데칼",
+  dome: "반구",
+  box: "상자",
+  cylinder: "원기둥",
+  cone: "원뿔",
+  capsule: "캡슐",
+  torus: "고리",
+};
+// 반구·상자·원기둥·원뿔·캡슐·고리는 지역 좌표 ±1 안의 단위 도형을 size(세 축 반 크기)만큼 늘린 것이다.
+export const SOLIDS = new Set<Shape>(["dome", "box", "cylinder", "cone", "capsule", "torus"]);
 
 export interface PartPose {
   pos: Vec3;

@@ -1,4 +1,4 @@
-import { apply, applyT, place, type Model, type Placed, type Vec3 } from "./model.ts";
+import { SOLIDS, apply, applyT, place, type Model, type Placed, type Shape, type Vec3 } from "./model.ts";
 
 export interface Frame {
   width: number;
@@ -97,6 +97,77 @@ function strand(pl: Placed, o: Vec3, d: Vec3): Hit {
   return null;
 }
 
+// 단위 도형의 거리 함수(지역 좌표를 size로 나눈 공간). 반구는 위쪽 반, 원뿔은 밑면 y=-1·꼭짓점 y=1, 고리는 XY 평면.
+function unitSdf(shape: Shape, x: number, y: number, z: number): number {
+  switch (shape) {
+    case "dome":
+      return Math.max(Math.hypot(x, y, z) - 1, -y);
+    case "box": {
+      const qx = Math.abs(x) - 1, qy = Math.abs(y) - 1, qz = Math.abs(z) - 1;
+      return Math.hypot(Math.max(qx, 0), Math.max(qy, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qy, qz), 0);
+    }
+    case "cylinder": {
+      const dx = Math.hypot(x, z) - 1, dy = Math.abs(y) - 1;
+      return Math.min(Math.max(dx, dy), 0) + Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+    }
+    case "cone": {
+      const qx = Math.hypot(x, z), qy = y;
+      const cax = qx - Math.min(qx, qy < 0 ? 1 : 0), cay = Math.abs(qy) - 1;
+      const k = Math.min(1, Math.max(0, ((0 - qx) * -1 + (1 - qy) * 2) / 5));
+      const cbx = qx - 0 + -1 * k, cby = qy - 1 + 2 * k;
+      const sgn = cbx < 0 && cay < 0 ? -1 : 1;
+      return sgn * Math.sqrt(Math.min(cax * cax + cay * cay, cbx * cbx + cby * cby));
+    }
+    case "capsule":
+      return Math.hypot(x, y - Math.max(-0.4, Math.min(0.4, y)), z) - 0.6;
+    case "torus":
+      return Math.hypot(Math.hypot(x, y) - 0.75, z) - 0.25;
+    default:
+      return Math.hypot(x, y, z) - 1;
+  }
+}
+
+function solid(pl: Placed, o: Vec3, d: Vec3): Hit {
+  const s = pl.part.size;
+  const shape = pl.part.shape!;
+  const lo = applyT(pl.rot, [o[0] - pl.center[0], o[1] - pl.center[1], o[2] - pl.center[2]]);
+  const ld = applyT(pl.rot, d);
+  const R = Math.max(s[0], s[1], s[2]) * 1.75;
+  const b = lo[0] * ld[0] + lo[1] * ld[1] + lo[2] * ld[2];
+  const c = lo[0] * lo[0] + lo[1] * lo[1] + lo[2] * lo[2] - R * R;
+  const disc = b * b - c;
+  if (disc < 0) return null;
+  let t = -b - Math.sqrt(disc);
+  const end = -b + Math.sqrt(disc);
+  const minS = Math.min(s[0], s[1], s[2]);
+  const sdf = (x: number, y: number, z: number) => unitSdf(shape, x / s[0], y / s[1], z / s[2]);
+  for (let i = 0; i < 96 && t < end; i++) {
+    const px = lo[0] + t * ld[0], py = lo[1] + t * ld[1], pz = lo[2] + t * ld[2];
+    const dist = sdf(px, py, pz) * minS;
+    if (dist < 0.005) {
+      const e = 0.01;
+      const g: Vec3 = [sdf(px + e, py, pz) - sdf(px - e, py, pz), sdf(px, py + e, pz) - sdf(px, py - e, pz), sdf(px, py, pz + e) - sdf(px, py, pz - e)];
+      const n = apply(pl.rot, g);
+      const nl = Math.hypot(n[0], n[1], n[2]) || 1;
+      return [t, [n[0] / nl, n[1] / nl, n[2] / nl], Math.min(1, Math.max(0, (1 - py / s[1]) / 2))];
+    }
+    t += Math.max(dist, 0.01);
+  }
+  return null;
+}
+
+function hit(pl: Placed, o: Vec3, d: Vec3): Hit {
+  if (pl.part.shape === "strand") return strand(pl, o, d);
+  if (pl.part.shape && SOLIDS.has(pl.part.shape)) return solid(pl, o, d);
+  return ellipsoid(pl, o, d);
+}
+
+// 시점: 기울기(아래로 내려다보는 각도)와 캐릭터의 Y축 회전. 생략하면 모델의 게임 시점과 방향 회전을 쓴다.
+export interface Cam {
+  pitch: number;
+  yaw: number;
+}
+
 interface Bound {
   pl: Placed;
   x: number;
@@ -108,7 +179,7 @@ function bounds(placed: Placed[], up: Vec3): Bound[] {
   return placed.filter((pl) => pl.part.shape !== "decal").map((pl) => {
     const s = pl.part.size;
     let c = pl.center;
-    let r = Math.max(s[0], s[1], s[2]);
+    let r = Math.max(s[0], s[1], s[2]) * (pl.part.shape && SOLIDS.has(pl.part.shape) ? 1.75 : 1);
     if (pl.part.shape === "strand") {
       const mid = apply(pl.rot, [0, -s[1] / 2, 0]);
       c = [c[0] + mid[0], c[1] + mid[1], c[2] + mid[2]];
@@ -118,9 +189,9 @@ function bounds(placed: Placed[], up: Vec3): Bound[] {
   });
 }
 
-export function rasterize(m: Model, pose: string | null, dir: number, width: number, height: number, cx: number, cy: number, scale = 1): Frame {
-  const { up, d } = view(m.pitch);
-  const placed = place(m, pose, m.yaw[dir]);
+export function rasterize(m: Model, pose: string | null, dir: number, width: number, height: number, cx: number, cy: number, scale = 1, cam?: Cam): Frame {
+  const { up, d } = view(cam?.pitch ?? m.pitch);
+  const placed = place(m, pose, cam?.yaw ?? m.yaw[dir]);
   const bs = bounds(placed, up);
   const byId = new Map(placed.map((pl) => [pl.part.id, pl.index]));
   const decals = new Map<number, Placed[]>();
@@ -141,7 +212,7 @@ export function rasterize(m: Model, pose: string | null, dir: number, width: num
       const i = y * width + x;
       for (const b of bs) {
         if ((sx - b.x) * (sx - b.x) + (sy - b.y) * (sy - b.y) > b.r2) continue;
-        const h = b.pl.part.shape === "strand" ? strand(b.pl, o, d) : ellipsoid(b.pl, o, d);
+        const h = hit(b.pl, o, d);
         if (!h || h[0] >= f.depth[i]) continue;
         f.depth[i] = h[0];
         f.part[i] = b.pl.index;
