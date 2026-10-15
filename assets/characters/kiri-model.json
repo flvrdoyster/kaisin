@@ -1,0 +1,66 @@
+{
+ "version": 1,
+ "pitch": 30,
+ "yaw": [180, 70, 0, -70],
+ "light": [-0.5, 0.8, 0.6],
+ "outline": 1,
+ "edge": 3,
+ "palette": [[51, 102, 204], [0, 0, 0], [153, 153, 170], [204, 204, 221], [255, 255, 255], [255, 238, 136], [238, 153, 34], [221, 85, 17], [136, 34, 0], [255, 204, 170], [221, 136, 102], [34, 153, 136], [221, 34, 68], [136, 0, 51], [170, 204, 68], [102, 136, 34]],
+ "parts": [
+  {"id": "body", "parent": null, "pos": [0, -8, 1], "rot": [0, 0, 0], "size": [9, 8, 8], "ramp": [3, 4], "shape": "cylinder"},
+  {"id": "head", "parent": "body", "pos": [0, 7, -1], "rot": [0, 0, 0], "size": [15, 13, 14], "ramp": [10, 9]},
+  {"id": "hair", "parent": "head", "pos": [0, 5, -3], "rot": [-25, 0, 0], "size": [18.5, 16, 18], "ramp": [8, 7, 7, 6, 6], "shape": "dome", "grad": 0.15},
+  {"id": "shine", "parent": "hair", "pos": [0, 10, 11.9], "rot": [-52, 0, 0], "size": [24, 4.5, 4], "ramp": [5], "shape": "decal", "image": ["...5555555555...",".55555555555555.","555..........555"]},
+  {"id": "fringe0L", "parent": "head", "pos": [-4.5, 12, 12], "rot": [41, 144, 0], "size": [3.5, 9, 1.5], "ramp": [8, 7, 7, 6], "shape": "strand", "grad": 0.2},
+  {"id": "fringe-0", "parent": "head", "pos": [1.5, 12.5, 13], "rot": [40, 144, 0], "size": [5, 11.5, 1.5], "ramp": [8, 7, 7, 6], "shape": "strand", "grad": 0.2},
+  {"id": "fringe1L", "parent": "head", "pos": [-10, 11, 10], "rot": [25, 126, 0], "size": [4, 6, 1], "ramp": [8, 7, 7, 6], "shape": "strand", "grad": 0.2},
+  {"id": "fringe1L2", "parent": "head", "pos": [-14.5, 10, 6], "rot": [25, 126, 0], "size": [4, 9, 1.5], "ramp": [8, 7, 7, 6], "shape": "strand", "grad": 0.2},
+  {"id": "fringe1L22", "parent": "head", "pos": [14.5, 10, 6], "rot": [25, -126, 0], "size": [4, 9, 1.5], "ramp": [8, 7, 7, 6], "shape": "strand", "grad": 0.2},
+  {"id": "fall0L", "parent": "head", "pos": [-11, 2, -8], "rot": [20, 25, 25], "size": [7, 16, 1], "ramp": [8, 7, 7, 6, 6, 6, 5], "shape": "strand", "grad": 0.5},
+  {"id": "fringe0R", "parent": "head", "pos": [4.5, 12, 12], "rot": [41, -144, 0], "size": [3.5, 9, 1.5], "ramp": [8, 7, 7, 6], "shape": "strand", "grad": 0.2},
+  {"id": "fringe1R", "parent": "head", "pos": [10, 11, 10], "rot": [25, -126, 0], "size": [4, 6, 1], "ramp": [8, 7, 7, 6], "shape": "strand", "grad": 0.2},
+  {"id": "wing1R", "parent": "head", "pos": [15, 4.5, 4], "rot": [40, 10, 0], "size": [4.5, 14.5, 1.5], "ramp": [8, 7, 7, 6, 6, 6, 5], "shape": "strand", "grad": 0.4},
+  {"id": "wing1R2", "parent": "head", "pos": [-15, 4.5, 4], "rot": [40, -10, 0], "size": [4.5, 14.5, 1.5], "ramp": [8, 7, 7, 6, 6, 6, 5], "shape": "strand", "grad": 0.4},
+  {"id": "fall0R", "parent": "head", "pos": [11, 2, -8], "rot": [20, 25, -5], "size": [7, 16, 1], "ramp": [8, 7, 7, 6, 6, 6, 5], "shape": "strand", "grad": 0.5},
+  {"id": "fall0", "parent": "head", "pos": [0, -6.5, -13], "rot": [29, 0, 0], "size": [7, 10.5, 1], "ramp": [8, 7, 7, 6, 6, 6, 5], "shape": "strand", "grad": 0.5},
+  {"id": "braid2", "parent": "head", "pos": [0, -5, 1], "rot": [0, 0, 0], "size": [3.5, 3.5, 3.5], "ramp": [6, 5]},
+  {"id": "tie", "parent": "braid2", "pos": [0, -2, 0], "rot": [0, 0, 0], "size": [3, 2, 3], "ramp": [13, 12]},
+  {"id": "braidTip", "parent": "tie", "pos": [0, -1, 0], "rot": [0, 0, 0], "size": [2, 1, 0.4], "ramp": [6, 5], "shape": "strand", "grad": 0.5},
+  {"id": "nose", "parent": "head", "pos": [0, -6, 16.8], "rot": [0, 0, 0], "size": [1.2, 1.2, 2], "ramp": [1], "shape": "decal", "image": ["a"]},
+  {"id": "handL", "parent": null, "pos": [-18.5, -5, 6.5], "rot": [0, 0, 0], "size": [4, 4.5, 4.5], "ramp": [10, 9]},
+  {"id": "handR", "parent": null, "pos": [18.5, -5, 6.5], "rot": [0, 0, 0], "size": [4, 4.5, 4.5], "ramp": [10, 9]},
+  {"id": "footL", "parent": null, "pos": [-9, -16.5, 4], "rot": [0, 0, 0], "size": [5, 5, 7], "ramp": [6, 5], "shape": "dome"},
+  {"id": "footR", "parent": null, "pos": [9, -16.5, 4], "rot": [0, 0, 0], "size": [5, 5, 7], "ramp": [6, 5], "shape": "dome"}
+ ],
+ "poses": {
+  "stand": {},
+  "walk1": {
+   "body": {"pos": [0, 1.5, 1], "rot": [8, 0, 0]},
+   "footR": {"pos": [0, 2.5, 6], "rot": [0, 0, 0]},
+   "footL": {"pos": [0, 1, -5], "rot": [0, 0, 0]},
+   "handL": {"pos": [1, 2, 4], "rot": [0, 0, 0]},
+   "handR": {"pos": [-1, 2, -4], "rot": [0, 0, 0]}
+  },
+  "walk2": {
+   "body": {"pos": [0, -1, 0], "rot": [0, 0, 0]},
+   "footR": {"pos": [0, 0, 2], "rot": [0, 0, 0]},
+   "footL": {"pos": [0, 2.5, -2], "rot": [0, 0, 0]},
+   "handL": {"pos": [-1.5, 0.5, 0], "rot": [0, 0, 0]},
+   "handR": {"pos": [1.5, 0.5, 0], "rot": [0, 0, 0]}
+  },
+  "walk3": {
+   "body": {"pos": [0, 1.5, 1], "rot": [8, 0, 0]},
+   "footL": {"pos": [0, 2.5, 6], "rot": [0, 0, 0]},
+   "footR": {"pos": [0, 1, -5], "rot": [0, 0, 0]},
+   "handR": {"pos": [-1, 2, 4], "rot": [0, 0, 0]},
+   "handL": {"pos": [1, 2, -4], "rot": [0, 0, 0]}
+  },
+  "walk4": {
+   "body": {"pos": [0, -1, 0], "rot": [0, 0, 0]},
+   "footL": {"pos": [0, 0, 2], "rot": [0, 0, 0]},
+   "footR": {"pos": [0, 2.5, -2], "rot": [0, 0, 0]},
+   "handR": {"pos": [1.5, 0.5, 0], "rot": [0, 0, 0]},
+   "handL": {"pos": [-1.5, 0.5, 0], "rot": [0, 0, 0]}
+  }
+ }
+}
