@@ -21,7 +21,7 @@ export function loadCommonSheets() {
   s.loadGrid(0xd, "ANI_SP.png", 0xc0, 0xc0, 0x20, 0x20);
   s.loadRects(0xb, "SUUJI_DT.png", 0x50, 0x50, e.i32("rectSUUJI"));
   s.loadRects(5, "SMASH.png", 0x30, 0x30, e.i32("rectSMASH"));
-  s.loadRects(KIRI_SHEET, "KIRI.png", 0xe0, 0xe0, e.i32("rectSMASH"));
+  if (s.has("KIRI.png")) s.loadRects(KIRI_SHEET, "KIRI.png", 0xe0, 0xe0, e.i32("rectSMASH"));
   if (s.has("KIRI_FACE.png")) s.loadGrid(KIRI_FACE, "KIRI_FACE.png", 0xf0, 0, 0x80, 0x80);
   s.loadRects(0xc, "IROIRO_0.png", 0xb0, 0xb0, e.i32("rectIROIRO"));
   s.loadRects(9, "ZAKO_4.png", 0xa0, 0xa0, e.i32("rectZAKO4"));

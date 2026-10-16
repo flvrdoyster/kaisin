@@ -32,8 +32,10 @@ function imageList(): string[] {
   return names;
 }
 
-const KIRI_SOURCE = ["localhost", "127.0.0.1"].includes(location.hostname) && new URLSearchParams(location.search).has("base") ? "KIRI_BASE.png" : "KIRI.png";
-const OPTIONAL_IMAGES = [KIRI_SOURCE, "KIRI_FACE.png"];
+const DEV = ["localhost", "127.0.0.1"].includes(location.hostname);
+const KIRI_ENABLED = DEV;
+const KIRI_SOURCE = DEV && new URLSearchParams(location.search).has("base") ? "KIRI_BASE.png" : "KIRI.png";
+const OPTIONAL_IMAGES = KIRI_ENABLED ? [KIRI_SOURCE, "KIRI_FACE.png"] : [];
 
 async function fetchFile(root: string, name: string): Promise<Uint8Array> {
   const res = await fetch(`${root}/${name}`);
@@ -45,7 +47,7 @@ interface Loaded {
   ints: Map<string, Int32Array>;
   images: Map<string, IndexedImage>;
   languages: Lang[];
-  optional: { kiri?: IndexedImage; face?: IndexedImage; paletteSizes: Map<string, number> };
+  optional: { kiri?: IndexedImage; face?: IndexedImage; paletteSizes: Map<string, number>; errors: Map<string, string> };
 }
 
 async function loadMaps(): Promise<Map<string, Int32Array>> {
@@ -82,25 +84,32 @@ async function loadFiles(): Promise<Loaded> {
   }
   if (languages.length === 0) throw new Error("게임 데이터를 불러오지 못했습니다");
   const paletteSizes = new Map<string, number>();
+  const errors = new Map<string, string>();
   await Promise.all(
     OPTIONAL_IMAGES.map(async (name) => {
       const res = await fetch(`assets/gfx/${name}`);
       if (!res.ok) return;
-      const img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
       const key = name === KIRI_SOURCE ? "KIRI.png" : name;
+      let img: IndexedImage;
+      try {
+        img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
+      } catch (e) {
+        errors.set(key, `${name} 읽기 실패: ${(e as Error).message}`);
+        return;
+      }
       paletteSizes.set(key, img.palette.length);
       img.palette = img.palette.slice(0, 16);
       images.set(key, img);
     }),
   );
-  const optional = { kiri: images.get("KIRI.png"), face: images.get("KIRI_FACE.png"), paletteSizes };
-  if (!optional.kiri) images.set("KIRI.png", images.get("SMASH.png")!);
-  try {
-    const res = await fetch("assets/characters/kiri.json", { cache: "no-store" });
-    const def = res.ok ? parseDef(await res.json()) : null;
-    if (def) setKiriDef(def);
-  } catch {
-    // 데이터 파일이 없으면 기본값을 쓴다
+  const optional = { kiri: images.get("KIRI.png"), face: images.get("KIRI_FACE.png"), paletteSizes, errors };
+  if (KIRI_ENABLED) {
+    if (!optional.kiri) images.set("KIRI.png", images.get("SMASH.png")!);
+    try {
+      const res = await fetch("assets/characters/kiri.json", { cache: "no-store" });
+      const def = res.ok ? parseDef(await res.json()) : null;
+      if (def) setKiriDef(def);
+    } catch {}
   }
   return { ints: await loadMaps(), images, languages, optional };
 }
@@ -139,8 +148,6 @@ async function loadWebFonts(table: string) {
   await Promise.race([Promise.all(loads), wait]);
 }
 
-const DEV = ["localhost", "127.0.0.1"].includes(location.hostname);
-
 async function boot() {
   const params = new URLSearchParams(location.search);
   if (DEV && params.get("pose") === "kiri") {
@@ -172,7 +179,7 @@ async function boot() {
   loadCommonSheets();
   const sprites = DEV ? params.get("sprites") : null;
   const editing = DEV && params.get("edit") !== null;
-  selectCharacter(sprites === "smash" ? "smash" : sprites !== null || editing || params.get("char") === "kiri" ? "kiri" : "smash");
+  selectCharacter(KIRI_ENABLED && sprites !== "smash" && (sprites !== null || editing || params.get("char") === "kiri") ? "kiri" : "smash");
 
   const canvas = document.getElementById("screen") as HTMLCanvasElement;
   const ctx = canvas.getContext("2d")!;
@@ -231,14 +238,23 @@ async function boot() {
   const hooks: DevHooks = {
     watch: [`gfx/${KIRI_SOURCE}`, "gfx/KIRI_FACE.png", "characters/kiri.json"],
     warnings: () => [
+      ...optional.errors.values(),
       ...checkSheet(optional.kiri, optional.paletteSizes.get("KIRI.png") ?? 0, data.i32("rectSMASH"), images.get("SMASH.png")!),
       ...checkFace(optional.face, optional.paletteSizes.get("KIRI_FACE.png") ?? 0),
     ],
     refresh: async (name) => {
       const res = await fetch(`assets/gfx/${name}`, { cache: "no-store" });
       if (!res.ok) return;
-      const img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
+      const file = name;
       if (name === KIRI_SOURCE) name = "KIRI.png";
+      let img: IndexedImage;
+      try {
+        img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
+      } catch (e) {
+        optional.errors.set(name, `${file} 읽기 실패: ${(e as Error).message}`);
+        return;
+      }
+      optional.errors.delete(name);
       optional.paletteSizes.set(name, img.palette.length);
       img.palette = img.palette.slice(0, 16);
       images.set(name, img);
