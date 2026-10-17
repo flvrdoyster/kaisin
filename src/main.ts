@@ -34,8 +34,7 @@ function imageList(): string[] {
 
 const DEV = ["localhost", "127.0.0.1"].includes(location.hostname);
 const KIRI_ENABLED = DEV;
-const KIRI_SOURCE = DEV && new URLSearchParams(location.search).has("base") ? "KIRI_BASE.png" : "KIRI.png";
-const OPTIONAL_IMAGES = KIRI_ENABLED ? [KIRI_SOURCE, "KIRI_FACE.png"] : [];
+const OPTIONAL_IMAGES = KIRI_ENABLED ? ["KIRI.png", "KIRI_FACE.png"] : [];
 
 async function fetchFile(root: string, name: string): Promise<Uint8Array> {
   const res = await fetch(`${root}/${name}`);
@@ -89,17 +88,16 @@ async function loadFiles(): Promise<Loaded> {
     OPTIONAL_IMAGES.map(async (name) => {
       const res = await fetch(`assets/gfx/${name}`);
       if (!res.ok) return;
-      const key = name === KIRI_SOURCE ? "KIRI.png" : name;
       let img: IndexedImage;
       try {
         img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
       } catch (e) {
-        errors.set(key, `${name} 읽기 실패: ${(e as Error).message}`);
+        errors.set(name, `${name} 읽기 실패: ${(e as Error).message}`);
         return;
       }
-      paletteSizes.set(key, img.palette.length);
+      paletteSizes.set(name, img.palette.length);
       img.palette = img.palette.slice(0, 16);
-      images.set(key, img);
+      images.set(name, img);
     }),
   );
   const optional = { kiri: images.get("KIRI.png"), face: images.get("KIRI_FACE.png"), paletteSizes, errors };
@@ -150,11 +148,6 @@ async function loadWebFonts(table: string) {
 
 async function boot() {
   const params = new URLSearchParams(location.search);
-  if (DEV && params.get("pose") === "kiri") {
-    const { startPoser } = await import("./dev/poser/ui.ts");
-    await startPoser();
-    return;
-  }
   const status = document.getElementById("status")!;
   status.textContent = "불러오는 중…";
   const textTable = await (await fetch("assets/text/texts.tsv")).text();
@@ -236,7 +229,7 @@ async function boot() {
   addEventListener("pagehide", () => game.autoPause());
 
   const hooks: DevHooks = {
-    watch: [`gfx/${KIRI_SOURCE}`, "gfx/KIRI_FACE.png", "characters/kiri.json"],
+    watch: ["gfx/KIRI.png", "gfx/KIRI_FACE.png", "characters/kiri.json"],
     warnings: () => [
       ...optional.errors.values(),
       ...checkSheet(optional.kiri, optional.paletteSizes.get("KIRI.png") ?? 0, data.i32("rectSMASH"), images.get("SMASH.png")!),
@@ -245,13 +238,11 @@ async function boot() {
     refresh: async (name) => {
       const res = await fetch(`assets/gfx/${name}`, { cache: "no-store" });
       if (!res.ok) return;
-      const file = name;
-      if (name === KIRI_SOURCE) name = "KIRI.png";
       let img: IndexedImage;
       try {
         img = await decodeIndexedPng(new Uint8Array(await res.arrayBuffer()));
       } catch (e) {
-        optional.errors.set(name, `${file} 읽기 실패: ${(e as Error).message}`);
+        optional.errors.set(name, `${name} 읽기 실패: ${(e as Error).message}`);
         return;
       }
       optional.errors.delete(name);

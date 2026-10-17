@@ -20,7 +20,6 @@ if (process.argv.includes("--watch")) {
 }
 
 const SAVABLE = /^\/dev\/(characters\/[a-z-]+\.json)$/;
-const SAVABLE_PNG = /^\/dev\/(gfx\/KIRI_BASE\.png)$/;
 const loopback = (a?: string) => a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
 
 createServer((req, res) => {
@@ -39,21 +38,6 @@ createServer((req, res) => {
       } catch {
         res.writeHead(404).end();
       }
-      return;
-    }
-    const png = SAVABLE_PNG.exec(url.pathname);
-    if (req.method === "PUT" && png) {
-      const chunks: Buffer[] = [];
-      req.on("data", (c: Buffer) => chunks.push(c));
-      req.on("end", () => {
-        const body = Buffer.concat(chunks);
-        if (body.length > 2_000_000 || !body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
-          res.writeHead(400).end();
-          return;
-        }
-        writeFileSync(join(root, "assets", png[1]), body);
-        res.writeHead(200).end("ok");
-      });
       return;
     }
     const m = SAVABLE.exec(url.pathname);
