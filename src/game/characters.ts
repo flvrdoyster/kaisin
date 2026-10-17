@@ -1,4 +1,5 @@
 import { G } from "./core.ts";
+import { KIRI_DEF } from "../data/kiriDef.ts";
 
 export type CharacterId = "smash" | "kiri";
 
@@ -56,19 +57,6 @@ export function defaultDef(): CharDef {
   return { version: 1, hurt: [0, 0, 0, 0], dirs: [dir(), dir(), dir(), dir()] };
 }
 
-const isRect = (v: unknown): v is Rect => Array.isArray(v) && v.length === 4 && v.every((n) => Number.isInteger(n));
-const isPoint = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && v.every((n) => Number.isInteger(n));
-
-export function parseDef(json: unknown): CharDef | null {
-  const d = json as Partial<CharDef> | null;
-  if (!d || d.version !== 1 || !isRect(d.hurt) || !Array.isArray(d.dirs) || d.dirs.length !== 4) return null;
-  for (const x of d.dirs) {
-    if (!x || !isPoint(x.trail) || !Array.isArray(x.swing) || x.swing.length !== 3 || !x.swing.every(isRect) || !isRect(x.start)) return null;
-    if (!Array.isArray(x.strikes) || !x.strikes.every(isPoint)) return null;
-  }
-  return d as CharDef;
-}
-
 const arr = (a: number[]) => `[${a.join(", ")}]`;
 
 export function formatDef(def: CharDef): string {
@@ -84,11 +72,7 @@ export function formatDef(def: CharDef): string {
   return `{\n "version": 1,\n "hurt": ${arr(def.hurt)},\n "dirs": [\n${dirs.join(",\n")}\n ]\n}\n`;
 }
 
-let kiriDef: CharDef = defaultDef();
-export const getKiriDef = () => kiriDef;
-export function setKiriDef(def: CharDef) {
-  kiriDef = def;
-}
+export const getKiriDef = () => KIRI_DEF;
 
 function kiriTables(def: CharDef) {
   const t = G.t;
@@ -119,7 +103,7 @@ function kiriTables(def: CharDef) {
 export function selectCharacter(id: CharacterId) {
   const t = G.t;
   if (id === "kiri") {
-    G.char = { id, sheet: KIRI_SHEET, face: G.sheets.get(KIRI_FACE) ? KIRI_FACE << 16 : 0, ...kiriTables(kiriDef) };
+    G.char = { id, sheet: KIRI_SHEET, face: G.sheets.get(KIRI_FACE) ? KIRI_FACE << 16 : 0, ...kiriTables(KIRI_DEF) };
     G.hurt.set(G.char.hurt.map((v) => v * 0x10000));
     return;
   }

@@ -7,7 +7,7 @@ import { SoundEffects } from "./audio/se.ts";
 import { State, Tables } from "./game/state.ts";
 import { setState } from "./game/core.ts";
 import { Game, loadCommonSheets } from "./game/game.ts";
-import { KIRI_FACE, formatDef, getKiriDef, parseDef, selectCharacter, setKiriDef } from "./game/characters.ts";
+import { KIRI_FACE, formatDef, getKiriDef, selectCharacter } from "./game/characters.ts";
 import { SpriteViewer, type DevHooks } from "./dev/sprites.ts";
 import { checkFace, checkSheet } from "./dev/sheetCheck.ts";
 import { readTexts } from "./game/text.ts";
@@ -101,14 +101,7 @@ async function loadFiles(): Promise<Loaded> {
     }),
   );
   const optional = { kiri: images.get("KIRI.png"), face: images.get("KIRI_FACE.png"), paletteSizes, errors };
-  if (KIRI_ENABLED) {
-    if (!optional.kiri) images.set("KIRI.png", images.get("SMASH.png")!);
-    try {
-      const res = await fetch("assets/characters/kiri.json", { cache: "no-store" });
-      const def = res.ok ? parseDef(await res.json()) : null;
-      if (def) setKiriDef(def);
-    } catch {}
-  }
+  if (KIRI_ENABLED && !optional.kiri) images.set("KIRI.png", images.get("SMASH.png")!);
   return { ints: await loadMaps(), images, languages, optional };
 }
 
@@ -148,6 +141,11 @@ async function loadWebFonts(table: string) {
 
 async function boot() {
   const params = new URLSearchParams(location.search);
+  if (DEV && params.get("sheet") === "kiri") {
+    const { startSheetEditor } = await import("./dev/sheetEditor.ts");
+    await startSheetEditor();
+    return;
+  }
   const status = document.getElementById("status")!;
   status.textContent = "불러오는 중…";
   const textTable = await (await fetch("assets/text/texts.tsv")).text();
@@ -229,7 +227,7 @@ async function boot() {
   addEventListener("pagehide", () => game.autoPause());
 
   const hooks: DevHooks = {
-    watch: ["gfx/KIRI.png", "gfx/KIRI_FACE.png", "characters/kiri.json"],
+    watch: ["assets/gfx/KIRI.png", "assets/gfx/KIRI_FACE.png"],
     warnings: () => [
       ...optional.errors.values(),
       ...checkSheet(optional.kiri, optional.paletteSizes.get("KIRI.png") ?? 0, data.i32("rectSMASH"), images.get("SMASH.png")!),
@@ -260,16 +258,8 @@ async function boot() {
       sheets.applyPalette();
       selectCharacter("kiri");
     },
-    reloadDef: async () => {
-      const res = await fetch("assets/characters/kiri.json", { cache: "no-store" });
-      const def = res.ok ? parseDef(await res.json()) : null;
-      if (def) {
-        setKiriDef(def);
-        selectCharacter("kiri");
-      }
-    },
     save: async (def) => {
-      const res = await fetch("/dev/characters/kiri.json", { method: "PUT", body: formatDef(def) });
+      const res = await fetch("/dev/kiri-def", { method: "PUT", body: formatDef(def) });
       return res.ok;
     },
   };

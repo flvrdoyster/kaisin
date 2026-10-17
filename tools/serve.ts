@@ -1,7 +1,8 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, statSync, watchFile, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
+import { EXPORTS, exportArt } from "./kiri.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const port = Number(process.argv.slice(2).find((a) => /^\d+$/.test(a)) ?? 7674);
@@ -19,8 +20,34 @@ if (process.argv.includes("--watch")) {
   spawn(join(root, "node_modules/.bin/tsc"), ["--watch", "--preserveWatchOutput"], { cwd: root, stdio: "inherit" });
 }
 
-const SAVABLE = /^\/dev\/(characters\/[a-z-]+\.json)$/;
 const loopback = (a?: string) => a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
+const mtime = (f: string) => {
+  try {
+    return statSync(join(root, f)).mtimeMs;
+  } catch {
+    return -1;
+  }
+};
+
+const exportStatus: Record<string, string> = {};
+const exported: Record<string, number> = {};
+function runExport(spec: (typeof EXPORTS)[number]) {
+  const m = mtime(spec.work);
+  if (exported[spec.work] === m) return;
+  exported[spec.work] = m;
+  try {
+    exportStatus[spec.work] = exportArt(spec);
+  } catch (e) {
+    exportStatus[spec.work] = `${spec.work} 내보내기 실패: ${(e as Error).message}`;
+  }
+  console.log(exportStatus[spec.work]);
+}
+for (const spec of EXPORTS) {
+  if (mtime(spec.work) > mtime(spec.final)) runExport(spec);
+  watchFile(join(root, spec.work), { interval: 500 }, (cur, prev) => {
+    if (cur.mtimeMs !== prev.mtimeMs && cur.mtimeMs > 0) runExport(spec);
+  });
+}
 
 createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
@@ -31,31 +58,47 @@ createServer((req, res) => {
     }
     if (url.pathname === "/dev/stat") {
       const f = normalize(url.searchParams.get("f") ?? "");
-      const full = join(root, "assets", f);
+      const full = join(root, f);
       try {
-        if (!full.startsWith(join(root, "assets")) || !statSync(full).isFile()) throw new Error();
+        if (!(full.startsWith(join(root, "assets/")) || full.startsWith(join(root, "work/"))) || !statSync(full).isFile()) throw new Error();
         res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ mtime: statSync(full).mtimeMs }));
       } catch {
         res.writeHead(404).end();
       }
       return;
     }
-    const m = SAVABLE.exec(url.pathname);
-    if (req.method === "PUT" && m) {
+    if (req.method === "PUT" && url.pathname === "/dev/kiri-def") {
       const chunks: Buffer[] = [];
       req.on("data", (c: Buffer) => chunks.push(c));
       req.on("end", () => {
         try {
-          const body = Buffer.concat(chunks).toString("utf8");
-          JSON.parse(body);
-          if (body.length > 500000) throw new Error();
-          const dir = join(root, "assets/characters");
-          mkdirSync(dir, { recursive: true });
-          writeFileSync(join(root, "assets", m[1]), body);
+          const body = Buffer.concat(chunks).toString("utf8").trim();
+          if (body.length > 500000 || typeof JSON.parse(body) !== "object") throw new Error();
+          writeFileSync(join(root, "src/data/kiriDef.ts"), `import type { CharDef } from "../game/characters.ts";\n\nexport const KIRI_DEF: CharDef = ${body};\n`);
           res.writeHead(200).end("ok");
         } catch {
           res.writeHead(400).end();
         }
+      });
+      return;
+    }
+    if (url.pathname === "/dev/export") {
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(exportStatus));
+      return;
+    }
+    const spec = EXPORTS.find((e) => url.pathname === `/dev/${e.work}`);
+    if (req.method === "PUT" && spec) {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        const body = Buffer.concat(chunks);
+        if (body.length > 2_000_000 || !body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+          res.writeHead(400).end();
+          return;
+        }
+        writeFileSync(join(root, spec.work), body);
+        runExport(spec);
+        res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }).end(exportStatus[spec.work]);
       });
       return;
     }
@@ -64,7 +107,7 @@ createServer((req, res) => {
   }
   const path = normalize(decodeURIComponent((req.url ?? "/").split("?")[0]));
   const file = join(root, path === "/" ? "index.html" : path);
-  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || path.startsWith("/dist/") || path.startsWith("/assets/"))) {
+  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || path.startsWith("/dist/") || path.startsWith("/assets/") || (path.startsWith("/work/") && loopback(req.socket.remoteAddress)))) {
     res.writeHead(403).end();
     return;
   }

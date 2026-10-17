@@ -1,4 +1,6 @@
-{
+import type { CharDef } from "../game/characters.ts";
+
+export const KIRI_DEF: CharDef = {
  "version": 1,
  "hurt": [0, 0, 0, 0],
  "dirs": [
@@ -27,4 +29,4 @@
    "strikes": [[0, -32], [32, 0], [0, 32], [-32, 0], [-24, -24], [24, -24], [24, 24], [-24, 24]]
   }
  ]
-}
+};

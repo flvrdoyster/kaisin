@@ -13,7 +13,6 @@ export interface DevHooks {
   watch: string[];
   warnings(): string[];
   refresh(name: string): Promise<void>;
-  reloadDef(): Promise<void>;
   save(def: CharDef): Promise<boolean>;
 }
 
@@ -24,7 +23,6 @@ export class SpriteViewer {
   private readonly editor: CharacterEditor;
   private readonly seen = new Map<string, number>();
   private poll = 0;
-  private ownSave = 0;
 
   constructor(
     private readonly r: Renderer,
@@ -36,10 +34,7 @@ export class SpriteViewer {
     this.editor = new CharacterEditor(
       r,
       {
-        save: async (def) => {
-          this.ownSave = performance.now();
-          return hooks.save(def);
-        },
+        save: (def) => hooks.save(def),
       },
       canvas,
     );
@@ -71,9 +66,7 @@ export class SpriteViewer {
       const prev = this.seen.get(f);
       this.seen.set(f, mtime);
       if (prev === undefined || prev === mtime || mtime < 0) continue;
-      if (f.endsWith(".json")) {
-        if (performance.now() - this.ownSave > 3000 && !this.editor.isDirty) await this.hooks.reloadDef();
-      } else await this.hooks.refresh(f.split("/")[1]);
+      await this.hooks.refresh(f.split("/").pop()!);
     }
   }
 

@@ -330,7 +330,7 @@ export class CharacterEditor {
   private async save() {
     const ok = await this.hooks.save(this.def());
     if (ok) this.dirty = false;
-    this.show(ok ? "저장됨: assets/characters/kiri.json" : "저장 실패 (개발 서버가 필요합니다)");
+    this.show(ok ? "저장됨: src/data/kiriDef.ts" : "저장 실패 (개발 서버가 필요합니다)");
   }
 
   private poseOffset(poses: Int32Array, pose: number): [number, number] {
