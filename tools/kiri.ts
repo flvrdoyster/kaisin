@@ -1,13 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { decodeIndexed, decodePng, encodeIndexed } from "./png.ts";
-import { buildWalk, hasWalkTable } from "../src/dev/walkFromStand.ts";
+import { MIRRORS, buildWalk, hasWalkTable, mirrorWalk } from "../src/dev/walkFromStand.ts";
+import { GAME_H, GAME_W, KIRI_SHEETS, assemble, sheetSize } from "../src/dev/kiriSheets.ts";
 
 const root = resolve(import.meta.dirname, "..");
 
 export const EXPORTS = [
-  { work: "work/kiri/KIRI_BASE.png", final: "assets/gfx/KIRI.png", transparent: true, walk: true },
-  { work: "work/kiri/KIRI_FACE.png", final: "assets/gfx/KIRI_FACE.png", transparent: false, walk: false },
+  { sources: KIRI_SHEETS.map((s) => s.file), final: "assets/gfx/KIRI.png", transparent: true, walk: true },
+  { sources: ["work/kiri/KIRI_FACE.png"], final: "assets/gfx/KIRI_FACE.png", transparent: false, walk: false },
 ];
 
 type Rgb = [number, number, number];
@@ -15,24 +16,36 @@ const key = (c: Rgb) => (c[0] << 16) | (c[1] << 8) | c[2];
 const dist = (a: Rgb, b: Rgb) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
 
 export function exportArt(spec: (typeof EXPORTS)[number]): string {
-  const workPath = join(root, spec.work);
   const finalPath = join(root, spec.final);
-  if (!existsSync(workPath)) return `${spec.work} 없음`;
-  const full = decodePng(readFileSync(workPath));
+  const missing = spec.sources.filter((f) => !existsSync(join(root, f)));
+  if (missing.length) return `${missing.join(", ")} 없음`;
   const final = decodeIndexed(readFileSync(finalPath));
-  if (full.width !== final.width || full.height < final.height) {
-    return `${spec.work} 크기 ${full.width}×${full.height}가 ${spec.final}(${final.width}×${final.height})보다 작거나 폭이 달라 내보내지 않음`;
+  let work: { width: number; height: number; data: Uint8Array };
+  if (spec.walk) {
+    work = { width: GAME_W, height: GAME_H, data: new Uint8Array(GAME_W * GAME_H * 4) };
+    const sheets = [];
+    for (const sheet of KIRI_SHEETS) {
+      const img = decodePng(readFileSync(join(root, sheet.file)));
+      const [w, h] = sheetSize(sheet);
+      if (img.width !== w || img.height < h) return `${sheet.file} 크기 ${img.width}×${img.height}가 ${w}×${h}보다 작거나 폭이 달라 내보내지 않음`;
+      sheets.push(img);
+    }
+    assemble(sheets, work);
+  } else {
+    const full = decodePng(readFileSync(join(root, spec.sources[0])));
+    if (full.width !== final.width || full.height < final.height) {
+      return `${spec.sources[0]} 크기 ${full.width}×${full.height}가 ${spec.final}(${final.width}×${final.height})보다 작거나 폭이 달라 내보내지 않음`;
+    }
+    work = { width: final.width, height: final.height, data: full.data.subarray(0, final.width * final.height * 4) };
   }
-  const work = { width: final.width, height: final.height, data: full.data.subarray(0, final.width * final.height * 4) };
   const palette: Rgb[] = Array.from({ length: 16 }, (_, i) => final.palette[i] ?? [0, 0, 0]);
   const walked: number[] = [];
   if (spec.walk) {
     const smash = decodeIndexed(readFileSync(join(root, "assets/gfx/SMASH.png")));
     for (let dir = 0; dir < 4; dir++) {
-      if (!hasWalkTable(dir)) continue;
-      buildWalk(work, palette, smash, dir);
-      walked.push(dir);
+      if (hasWalkTable(dir) && buildWalk(work, palette, smash, dir)) walked.push(dir);
     }
+    for (const [from, to] of MIRRORS) if (mirrorWalk(work, from, to).length) walked.push(to);
   }
   const start = spec.transparent ? 1 : 0;
   const n = work.width * work.height;
@@ -52,7 +65,7 @@ export function exportArt(spec: (typeof EXPORTS)[number]): string {
   for (let i = start; i < 16; i++) if (used.has(key(palette[i])) && !index.has(key(palette[i]))) index.set(key(palette[i]), i);
   const fresh = [...used.values()].filter((c) => !index.has(key(c)));
   const notes: string[] = [];
-  if (spec.walk) notes.push(walked.length ? `걷기 칸 합성: ${walked.map((d) => ["위", "오른쪽", "아래", "왼쪽"][d]).join("·")}` : "걷기 칸 합성 없음");
+  if (spec.walk && walked.length) notes.push(`빈 걷기 칸 합성: ${walked.map((d) => ["위", "오른쪽", "아래", "왼쪽"][d]).join("·")}`);
   const free = [];
   for (let i = start; i < 16; i++) if (![...index.values()].includes(i)) free.push(i);
   if (fresh.length > 0 && fresh.length <= free.length) {

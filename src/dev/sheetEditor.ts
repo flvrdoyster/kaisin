@@ -3,9 +3,10 @@ import { KIRI_DEF } from "../data/kiriDef.ts";
 import { decodeIndexedPng, type IndexedImage } from "../data/image.ts";
 import { CENTER } from "../game/characters.ts";
 import { CHARACTER_CELLS } from "./sheetCheck.ts";
-import { hasWalkTable, walkCells } from "./walkFromStand.ts";
+import { cellIsEmpty, hasWalkTable, walkCells } from "./walkFromStand.ts";
+import { GAME_H, GAME_W, KIRI_SHEETS, assemble, disassemble, sheetCellAt } from "./kiriSheets.ts";
+import { bendHair } from "./hairLag.ts";
 
-const WORK = "work/kiri/KIRI_BASE.png";
 const FINAL = "assets/gfx/KIRI.png";
 const W = 640;
 const H = 272;
@@ -28,17 +29,19 @@ body.sheet { margin: 0; background: #1b1b1f; color: #ddd; font: 12px sans-serif;
 .sheet .ok { color: #80ff80; }
 .sheet label { display: block; margin: 2px 0; }
 .sheet select { font: inherit; margin-bottom: 6px; display: block; }
+.sheet .num { width: 44px; }
+.sheet button { font: inherit; padding: 3px 8px; margin: 6px 0; }
 .sheet kbd { background: #3a3a42; padding: 0 4px; border-radius: 3px; }
 `;
 
 const rects = Int32Array.from(GAME_TABLES.rectSMASH);
 const anim = Int32Array.from(GAME_TABLES.playerAnim);
 const characterCells = new Set(CHARACTER_CELLS);
-const autoCells = new Map<number, number>();
+const walkStand = new Map<number, number>();
 for (let dir = 0; dir < 4; dir++) {
   if (!hasWalkTable(dir)) continue;
   const [stand, ...walk] = walkCells(dir);
-  for (const c of walk) autoCells.set(c, stand);
+  for (const c of walk) walkStand.set(c, stand);
 }
 
 function kiriPoses(): Int32Array {
@@ -90,6 +93,12 @@ class SheetEditor {
   private readonly exportLine = el("div");
   private readonly overlay = el("input", { type: "checkbox" });
   private readonly centers = el("input", { type: "checkbox", checked: true });
+  private readonly hairSway = el("input", { type: "number", value: "1.5", min: "0", max: "4", step: "0.5", className: "num" });
+  private readonly hairEdge = el("input", { type: "number", value: "1.5", min: "0", max: "4", step: "0.5", className: "num" });
+  private hairPhase = 0;
+  private readonly hairDx = el("input", { type: "number", value: "0", min: "-6", max: "6", className: "num" });
+  private readonly hairDy = el("input", { type: "number", value: "0", min: "-6", max: "6", className: "num" });
+  private readonly hairButton = el("button", { textContent: "선택한 칸에 적용" });
   private readonly animSelect = el(
     "select",
     {},
@@ -101,7 +110,7 @@ class SheetEditor {
   private frame = 0;
   private paused = false;
   private dirty = false;
-  private seen = -1;
+  private seen = "";
   private ownSave = 0;
   private readonly history: ImageData[] = [];
   private readonly workCanvas = el("canvas", { width: W, height: H });
@@ -109,8 +118,13 @@ class SheetEditor {
   private readonly finalCanvas = el("canvas", { width: W, height: H });
   private finalSeen = -1;
 
-  constructor(work: ImageData, smash: IndexedImage, final: ImageData) {
-    this.work = work;
+  constructor(
+    private sheets: ImageData[],
+    smash: IndexedImage,
+    final: ImageData,
+    private readonly palette: [number, number, number][],
+  ) {
+    this.work = assembleWork(sheets);
     this.animSelect.value = "row2";
     this.smashCanvas.getContext("2d")!.putImageData(smashImage(smash), 0, 0);
     this.finalCanvas.getContext("2d")!.putImageData(final, 0, 0);
@@ -121,7 +135,7 @@ class SheetEditor {
       el(
         "div",
         { className: "row" },
-        el("div", { className: "box" }, el("div", { className: "title", textContent: "애니메이션 (왼쪽 키리 최종 파일, 오른쪽 스마슈)" }), this.animSelect, this.preview),
+        el("div", { className: "box" }, el("div", { className: "title", textContent: "애니메이션 (왼쪽 키리 편집 중인 그림, 오른쪽 스마슈)" }), this.animSelect, this.preview),
         el(
         "div",
         { className: "side" },
@@ -131,6 +145,14 @@ class SheetEditor {
           { className: "box" },
           el("label", {}, this.overlay, " 스마슈 겹쳐 보기 (O)"),
           el("label", {}, this.centers, " 몸 중심 표시 (C)"),
+        ),
+        el(
+          "div",
+          { className: "box" },
+          el("div", { className: "title", textContent: "머리카락 휘기" }),
+          el("label", {}, "가로 ", this.hairDx, " 세로 ", this.hairDy, " 흔들림 ", this.hairSway, " 윤곽 ", this.hairEdge),
+          this.hairButton,
+          el("div", { textContent: "머리카락 덩어리를 정수리 쪽은 고정하고 아래로 갈수록 더 크게 밀어, 머리보다 늦게 따라오게 휜다(세로 +는 아래, 가로 +는 오른쪽). 흔들림은 아래쪽 가닥 끝이 좌우로 물결치는 폭(px), 윤곽은 위·옆으로 뻗친 바깥 가닥이 머리 둘레를 따라 흔들리는 폭(px)이고, 물결 위상은 걷기 몇 번째인지로 정해진다. 얼굴·손·몸 위에 얹힌 머리카락은 움직이지 않는다. 걷기 칸을 고르면 기본값이 채워진다. 저장 전에는 Ctrl+Z로 되돌릴 수 있다." }),
         ),
         el(
           "div",
@@ -154,6 +176,7 @@ class SheetEditor {
       const c = this.cellAt(e);
       if (c !== null) {
         this.selected = c;
+        this.suggestHair();
         const row = rowOf(c);
         if (row !== null) this.animSelect.value = `row${row}`;
         else if (STILLS.some(([cell]) => cell === c)) this.animSelect.value = `cell${c}`;
@@ -162,6 +185,11 @@ class SheetEditor {
       }
     });
     this.overlay.addEventListener("change", () => this.draw());
+    this.hairButton.addEventListener("click", () => {
+      this.hairButton.blur();
+      this.applyHairBend();
+      this.draw();
+    });
     this.animSelect.addEventListener("change", () => {
       this.frame = 0;
       this.animSelect.blur();
@@ -198,15 +226,21 @@ class SheetEditor {
     return (r - l) * (b - t);
   }
 
+  private isAuto(cell: number) {
+    return walkStand.has(cell) && cellIsEmpty(this.work, cell);
+  }
+
   private label(cell: number) {
     const [l, t, r, b] = rect(cell);
     const kind = characterCells.has(cell) ? this.names.get(cell) ?? "캐릭터" : "공용 (스마슈 시트에서 그림)";
-    const auto = autoCells.has(cell) ? ` · 자동 (${autoCells.get(cell)}번과 스마슈 걷기 칸으로 만듦)` : "";
-    return `${cell}번 · ${kind}${auto} · ${r - l}×${b - t} · (${l}, ${t})`;
+    const auto = this.isAuto(cell) ? ` · 비어 있어 자동으로 채움 (${walkStand.get(cell)}번과 스마슈 걷기 칸)` : "";
+    const at = sheetCellAt(cell);
+    const where = at ? ` · ${at.spec.file.split("/").pop()} ${at.spec.rows.indexOf(at.row) + 1}줄 ${at.col + 1}번째` : "";
+    return `${cell}번 · ${kind}${auto} · ${r - l}×${b - t}${where}`;
   }
 
   private key(e: KeyboardEvent) {
-    if (e.target instanceof HTMLSelectElement) return;
+    if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key === "s") void this.save();
     else if (mod && e.key === "z") this.undo();
@@ -236,8 +270,8 @@ class SheetEditor {
   }
 
   private move(dx: number, dy: number) {
-    if (autoCells.has(this.selected)) {
-      this.setStatus(`${this.selected}번은 내보낼 때 자동으로 만드는 칸이라 옮기지 않음 (${autoCells.get(this.selected)}번을 고치면 따라 바뀜)`);
+    if (this.isAuto(this.selected)) {
+      this.setStatus(`${this.selected}번은 비어 있어 내보낼 때 자동으로 채우는 칸이라 옮기지 않음 (그림을 그려 넣으면 그 그림을 씀)`);
       return;
     }
     const [l, t, r, b] = rect(this.selected);
@@ -272,37 +306,79 @@ class SheetEditor {
     this.setStatus(`${this.selected}번 칸을 (${dx}, ${dy}) 옮김`);
   }
 
+  private suggestHair() {
+    for (let dir = 0; dir < 4; dir++) {
+      const k = walkCells(dir).indexOf(this.selected);
+      if (k < 0) continue;
+      const rising = k === 1 || k === 3;
+      const dy = k === 0 ? 0 : rising ? 3 : -2;
+      const back = dir === 1 ? -1 : dir === 3 ? 1 : 0;
+      const dx = k === 0 ? 0 : back ? back * (rising ? 3 : 2) : k <= 2 ? 2 : -2;
+      this.hairDx.value = String(dx);
+      this.hairDy.value = String(dy);
+      this.hairPhase = (k * Math.PI) / 2;
+      return;
+    }
+  }
+
+  private applyHairBend() {
+    if (this.isAuto(this.selected)) {
+      this.setStatus(`${this.selected}번은 비어 있어 자동으로 채우는 칸이라 적용하지 않음`);
+      return;
+    }
+    const bend = { dx: Number(this.hairDx.value) || 0, dy: Number(this.hairDy.value) || 0, sway: Number(this.hairSway.value) || 0, phase: this.hairPhase, fixed: 0.35, edge: Number(this.hairEdge.value) || 0 };
+    this.snapshot();
+    const changed = bendHair(this.work, rect(this.selected), [this.palette[6], this.palette[7], this.palette[8]], this.palette[1], bend);
+    if (changed === 0) {
+      this.history.pop();
+      this.setStatus(`${this.selected}번에 휠 머리카락이 없음`);
+      return;
+    }
+    this.dirty = true;
+    this.setStatus(`${this.selected}번 머리카락 ${changed}px 바뀜 (가로 ${bend.dx}, 세로 ${bend.dy}, 흔들림 ${bend.sway})`);
+  }
+
   private setStatus(text: string) {
     this.status.replaceChildren(el("div", { className: this.dirty ? "warn" : "ok", textContent: this.dirty ? "저장 안 됨" : "저장됨" }), el("div", { textContent: text }));
   }
 
   private async save() {
-    const full = el("canvas", { width: this.work.width, height: this.work.height });
-    full.getContext("2d")!.putImageData(this.work, 0, 0);
-    const blob = await new Promise<Blob | null>((ok) => full.toBlob(ok, "image/png"));
-    if (!blob) return;
+    const next = this.sheets.map((img) => new ImageData(new Uint8ClampedArray(img.data), img.width, img.height));
+    disassemble(this.work, next);
     this.ownSave = performance.now();
-    const res = await fetch(`/dev/${WORK}`, { method: "PUT", body: blob });
-    if (res.ok) this.dirty = false;
-    this.setStatus(res.ok ? await res.text() : "저장 실패 (개발 서버가 필요합니다)");
+    const messages: string[] = [];
+    let ok = true;
+    for (let i = 0; i < next.length; i++) {
+      if (next[i].data.every((v, j) => v === this.sheets[i].data[j])) continue;
+      const canvas = el("canvas", { width: next[i].width, height: next[i].height });
+      canvas.getContext("2d")!.putImageData(next[i], 0, 0);
+      const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, "image/png"));
+      const res = blob ? await fetch(`/dev/${KIRI_SHEETS[i].file}`, { method: "PUT", body: blob }) : null;
+      if (!res?.ok) ok = false;
+      else messages.push(await res.text());
+    }
+    if (ok) {
+      this.sheets = next;
+      this.dirty = false;
+    }
+    this.setStatus(ok ? messages.at(-1) ?? "바뀐 시트 없음" : "저장 실패 (개발 서버가 필요합니다)");
   }
 
   private async poll() {
     try {
-      const res = await fetch(`/dev/stat?f=${encodeURIComponent(WORK)}`, { cache: "no-store" });
-      if (res.ok) {
-        const { mtime } = await res.json();
-        if (this.seen >= 0 && mtime !== this.seen && performance.now() - this.ownSave > 2000) {
-          if (this.dirty) this.setStatus("작업 파일이 밖에서 바뀌었지만, 저장 안 된 이동이 있어 다시 읽지 않음");
-          else {
-            this.work = await loadRgba(WORK);
-            this.history.length = 0;
-            this.setStatus("작업 파일을 다시 읽음");
-            this.draw();
-          }
+      const times = await Promise.all(KIRI_SHEETS.map(async (sheet) => (await (await fetch(`/dev/stat?f=${encodeURIComponent(sheet.file)}`, { cache: "no-store" })).json()).mtime));
+      const mtime = times.join(",");
+      if (this.seen && mtime !== this.seen && performance.now() - this.ownSave > 2000) {
+        if (this.dirty) this.setStatus("작업 시트가 밖에서 바뀌었지만, 저장 안 된 이동이 있어 다시 읽지 않음");
+        else {
+          this.sheets = await loadSheets();
+          this.work = assembleWork(this.sheets);
+          this.history.length = 0;
+          this.setStatus("작업 시트를 다시 읽음");
+          this.draw();
         }
-        this.seen = mtime;
       }
+      this.seen = mtime;
       const fin = await fetch(`/dev/stat?f=${encodeURIComponent(FINAL)}`, { cache: "no-store" });
       if (fin.ok) {
         const { mtime } = await fin.json();
@@ -314,7 +390,7 @@ class SheetEditor {
       }
       const ex = await fetch("/dev/export", { cache: "no-store" });
       if (ex.ok) {
-        const line = (await ex.json())[WORK];
+        const line = (await ex.json())[FINAL];
         this.exportLine.textContent = line ? `내보내기: ${line}` : "";
       }
     } catch {
@@ -339,7 +415,8 @@ class SheetEditor {
     this.workCanvas.getContext("2d")!.putImageData(this.work, 0, 0);
     c.drawImage(this.workCanvas, 0, 0, W * ZOOM, H * ZOOM);
     c.globalAlpha = 0.5;
-    for (const cell of autoCells.keys()) {
+    for (const cell of walkStand.keys()) {
+      if (!this.isAuto(cell)) continue;
       const [l, t, r, b] = rect(cell);
       c.drawImage(this.finalCanvas, l, t, r - l, b - t, l * ZOOM, t * ZOOM, (r - l) * ZOOM, (b - t) * ZOOM);
     }
@@ -353,7 +430,7 @@ class SheetEditor {
       c.lineWidth = i === this.selected ? 2 : 1;
       c.strokeRect(l * ZOOM + 0.5, t * ZOOM + 0.5, (r - l) * ZOOM - 1, (b - t) * ZOOM - 1);
       c.fillStyle = mine ? "#a0ffb0" : "#999";
-      c.fillText(autoCells.has(i) ? `${i} 자동` : String(i), l * ZOOM + 2, t * ZOOM + 2);
+      c.fillText(this.isAuto(i) ? `${i} 자동` : String(i), l * ZOOM + 2, t * ZOOM + 2);
       if (this.centers.checked && mine) {
         const x = (l + CENTER - this.poses[i * 4]) * ZOOM;
         const y = (t + CENTER - this.poses[i * 4 + 1]) * ZOOM;
@@ -381,7 +458,8 @@ class SheetEditor {
     const [l, t, r, b] = rect(pose);
     const half = 96 * ANIM_ZOOM;
     const smashPoses = GAME_TABLES.poses;
-    for (const [i, src, poses] of [[0, this.finalCanvas, this.poses], [1, this.smashCanvas, smashPoses]] as const) {
+    const kiri = this.isAuto(pose) ? this.finalCanvas : this.workCanvas;
+    for (const [i, src, poses] of [[0, kiri, this.poses], [1, this.smashCanvas, smashPoses]] as const) {
       const ox = i * half + 24 * ANIM_ZOOM;
       const oy = 24 * ANIM_ZOOM;
       c.drawImage(src, l, t, r - l, b - t, ox + poses[pose * 4] * ANIM_ZOOM, oy + poses[pose * 4 + 1] * ANIM_ZOOM, (r - l) * ANIM_ZOOM, (b - t) * ANIM_ZOOM);
@@ -394,6 +472,14 @@ class SheetEditor {
     c.fillText(row === null ? `${pose}번 (정지 그림)` : `${pose}번 · ${this.names.get(pose) ?? ""} · 프레임 ${k}${this.paused ? " (정지)" : ""}`, 6, 6);
   }
 }
+
+function assembleWork(sheets: ImageData[]): ImageData {
+  const work = new ImageData(GAME_W, GAME_H);
+  assemble(sheets, work);
+  return work;
+}
+
+const loadSheets = () => Promise.all(KIRI_SHEETS.map((sheet) => loadRgba(sheet.file)));
 
 async function loadRgba(url: string): Promise<ImageData> {
   const res = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
@@ -419,6 +505,6 @@ function smashImage(img: IndexedImage): ImageData {
 }
 
 export async function startSheetEditor() {
-  const [work, smash, final] = await Promise.all([loadRgba(WORK), loadIndexed("assets/gfx/SMASH.png"), loadRgba(FINAL)]);
-  new SheetEditor(work, smash, final);
+  const [sheets, smash, final, finalIndexed] = await Promise.all([loadSheets(), loadIndexed("assets/gfx/SMASH.png"), loadRgba(FINAL), loadIndexed(FINAL)]);
+  new SheetEditor(sheets, smash, final, finalIndexed.palette.slice(0, 16));
 }

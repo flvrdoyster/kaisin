@@ -32,21 +32,23 @@ const mtime = (f: string) => {
 const exportStatus: Record<string, string> = {};
 const exported: Record<string, number> = {};
 function runExport(spec: (typeof EXPORTS)[number]) {
-  const m = mtime(spec.work);
-  if (exported[spec.work] === m) return;
-  exported[spec.work] = m;
+  const m = spec.sources.map(mtime).join(",");
+  if (exported[spec.final] === m) return;
+  exported[spec.final] = m;
   try {
-    exportStatus[spec.work] = exportArt(spec);
+    exportStatus[spec.final] = exportArt(spec);
   } catch (e) {
-    exportStatus[spec.work] = `${spec.work} 내보내기 실패: ${(e as Error).message}`;
+    exportStatus[spec.final] = `${spec.final} 내보내기 실패: ${(e as Error).message}`;
   }
-  console.log(exportStatus[spec.work]);
+  console.log(exportStatus[spec.final]);
 }
 for (const spec of EXPORTS) {
-  if (mtime(spec.work) > mtime(spec.final)) runExport(spec);
-  watchFile(join(root, spec.work), { interval: 500 }, (cur, prev) => {
-    if (cur.mtimeMs !== prev.mtimeMs && cur.mtimeMs > 0) runExport(spec);
-  });
+  if (Math.max(...spec.sources.map(mtime)) > mtime(spec.final)) runExport(spec);
+  for (const source of spec.sources) {
+    watchFile(join(root, source), { interval: 500 }, (cur, prev) => {
+      if (cur.mtimeMs !== prev.mtimeMs && cur.mtimeMs > 0) runExport(spec);
+    });
+  }
 }
 
 createServer((req, res) => {
@@ -86,7 +88,7 @@ createServer((req, res) => {
       res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(exportStatus));
       return;
     }
-    const spec = EXPORTS.find((e) => url.pathname === `/dev/${e.work}`);
+    const spec = EXPORTS.find((e) => e.sources.some((f) => url.pathname === `/dev/${f}`));
     if (req.method === "PUT" && spec) {
       const chunks: Buffer[] = [];
       req.on("data", (c: Buffer) => chunks.push(c));
@@ -96,9 +98,9 @@ createServer((req, res) => {
           res.writeHead(400).end();
           return;
         }
-        writeFileSync(join(root, spec.work), body);
+        writeFileSync(join(root, url.pathname.slice("/dev/".length)), body);
         runExport(spec);
-        res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }).end(exportStatus[spec.work]);
+        res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }).end(exportStatus[spec.final]);
       });
       return;
     }
