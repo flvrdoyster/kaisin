@@ -109,7 +109,7 @@ createServer((req, res) => {
   }
   const path = normalize(decodeURIComponent((req.url ?? "/").split("?")[0]));
   const file = join(root, path === "/" ? "index.html" : path);
-  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || path.startsWith("/dist/") || path.startsWith("/assets/") || (path.startsWith("/work/") && loopback(req.socket.remoteAddress)))) {
+  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || /^\/naver[0-9a-f]+\.html$/.test(path) || path.startsWith("/dist/") || path.startsWith("/assets/") || (path.startsWith("/work/") && loopback(req.socket.remoteAddress)))) {
     res.writeHead(403).end();
     return;
   }
