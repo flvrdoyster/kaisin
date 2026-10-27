@@ -992,7 +992,7 @@ export function spawnBallDrop() {
   ball.f58 = 1;
 }
 
-function doorHeartUpdate(o: Obj) {
+function sealHeartUpdate(o: Obj) {
   if (healTouch(o.x - PX16, o.y - PX16, o.x + 0x300000, o.y + 0x300000, 1)) {
     seRequest(1);
     puff(0xf00000, 0x1400000, 10);
@@ -1007,8 +1007,8 @@ function doorHeartUpdate(o: Obj) {
   }
 }
 
-export function spawnDoorHeart(x: number, y: number) {
-  const o = spawn(doorHeartUpdate, 2);
+export function spawnSealHeart(x: number, y: number) {
+  const o = spawn(sealHeartUpdate, 2);
   if (!o) return;
   o.kind = 1;
   o.x = x;

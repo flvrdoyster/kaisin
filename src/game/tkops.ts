@@ -32,7 +32,7 @@ import {
   spawnBlob,
   spawnBlockOrder,
   spawnDarkness,
-  spawnDoorHeart,
+  spawnSealHeart,
   spawnDropper,
   spawnDropperGen,
   spawnFixedHeart,
@@ -188,7 +188,7 @@ export function runTkOp(op: number, a: number, b: number, c: number): boolean {
       spawnKillChallenge();
       return true;
     case 0xed:
-      spawnDoorHeart(a, b);
+      spawnSealHeart(a, b);
       return true;
     case 0xee:
       spawnOnceAnim(a, b);
