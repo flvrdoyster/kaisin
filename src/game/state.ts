@@ -1,3 +1,4 @@
+import type { Renderer } from "../gfx/render.ts";
 import type { Character } from "./characters.ts";
 import { GameData } from "../data/gameData.ts";
 import type { Lang, Mode } from "../settings.ts";
@@ -120,6 +121,12 @@ export class Tables {
   }
 }
 
+export interface DebugHooks {
+  attack?(rects: Int32Array): void;
+  strikes?(points: number[]): void;
+  overlay?(r: Renderer): void;
+}
+
 export class State {
   readonly world = new World();
   readonly mdtMem = new Int32Array(MDT_COLS * MDT_ROWS * 2);
@@ -133,10 +140,7 @@ export class State {
   readonly atkRects = new Int32Array(12);
   char!: Character;
   readonly hurt = new Int32Array(4);
-  hitbox = false;
-  readonly hitboxRects = new Int32Array(12);
-  hitboxStrikes: number[] = [];
-  hitboxTtl = 0;
+  debug: DebugHooks | null = null;
 
   scene = 2;
   room = 0;

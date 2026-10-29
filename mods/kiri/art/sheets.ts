@@ -1,4 +1,4 @@
-import { GAME_TABLES } from "../data/gameTables.ts";
+import { GAME_TABLES } from "../../../src/data/gameTables.ts";
 import type { Pixels } from "./walkFromStand.ts";
 
 export interface SheetRow {
@@ -15,7 +15,7 @@ export interface SheetSpec {
 
 export const KIRI_SHEETS: SheetSpec[] = [
   {
-    file: "work/kiri/KIRI_48x48.png",
+    file: "mods/kiri/work/KIRI_48x48.png",
     w: 48,
     h: 48,
     rows: [
@@ -27,9 +27,9 @@ export const KIRI_SHEETS: SheetSpec[] = [
       { name: "피격·쓰러짐·석상", cells: [32, 36, 34] },
     ],
   },
-  { file: "work/kiri/KIRI_80x80.png", w: 80, h: 80, rows: [{ name: "공격 잔상", cells: [13, 16, 19, 22] }] },
+  { file: "mods/kiri/work/KIRI_80x80.png", w: 80, h: 80, rows: [{ name: "공격 잔상", cells: [13, 16, 19, 22] }] },
   {
-    file: "work/kiri/KIRI_48x80.png",
+    file: "mods/kiri/work/KIRI_48x80.png",
     w: 48,
     h: 80,
     rows: [
@@ -38,7 +38,7 @@ export const KIRI_SHEETS: SheetSpec[] = [
     ],
   },
   {
-    file: "work/kiri/KIRI_80x48.png",
+    file: "mods/kiri/work/KIRI_80x48.png",
     w: 80,
     h: 48,
     rows: [

@@ -1,13 +1,13 @@
-import { GAME_TABLES } from "../data/gameTables.ts";
-import { KIRI_DEF } from "../data/kiriDef.ts";
-import { decodeIndexedPng, type IndexedImage } from "../data/image.ts";
-import { CENTER } from "../game/characters.ts";
+import { GAME_TABLES } from "../../../src/data/gameTables.ts";
+import { KIRI_DEF } from "../src/hitboxDef.ts";
+import { decodeIndexedPng, type IndexedImage } from "../../../src/data/image.ts";
+import { CENTER } from "../../../src/game/characters.ts";
 import { CHARACTER_CELLS } from "./sheetCheck.ts";
-import { cellIsEmpty, hasWalkTable, walkCells } from "./walkFromStand.ts";
-import { GAME_H, GAME_W, KIRI_SHEETS, assemble, disassemble, sheetCellAt } from "./kiriSheets.ts";
-import { bendHair } from "./hairLag.ts";
+import { cellIsEmpty, hasWalkTable, walkCells } from "../art/walkFromStand.ts";
+import { GAME_H, GAME_W, KIRI_SHEETS, assemble, disassemble, sheetCellAt } from "../art/sheets.ts";
+import { bendHair } from "../art/hairLag.ts";
 
-const FINAL = "assets/gfx/KIRI.png";
+const FINAL = "mods/kiri/assets/KIRI.png";
 const W = 640;
 const H = 272;
 const ZOOM = 2;

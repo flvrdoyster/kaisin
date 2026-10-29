@@ -1,8 +1,13 @@
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
-import { createReadStream, statSync, watchFile, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
-import { EXPORTS, exportArt } from "./kiri.ts";
+import { pathToFileURL } from "node:url";
+
+interface ModServer {
+  start?(): void;
+  handle?(req: IncomingMessage, res: ServerResponse, path: string): boolean;
+}
 
 const root = resolve(import.meta.dirname, "..");
 const port = Number(process.argv.slice(2).find((a) => /^\d+$/.test(a)) ?? 7674);
@@ -21,34 +26,17 @@ if (process.argv.includes("--watch")) {
 }
 
 const loopback = (a?: string) => a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
-const mtime = (f: string) => {
-  try {
-    return statSync(join(root, f)).mtimeMs;
-  } catch {
-    return -1;
-  }
-};
 
-const exportStatus: Record<string, string> = {};
-const exported: Record<string, number> = {};
-function runExport(spec: (typeof EXPORTS)[number]) {
-  const m = spec.sources.map(mtime).join(",");
-  if (exported[spec.final] === m) return;
-  exported[spec.final] = m;
-  try {
-    exportStatus[spec.final] = exportArt(spec);
-  } catch (e) {
-    exportStatus[spec.final] = `${spec.final} 내보내기 실패: ${(e as Error).message}`;
-  }
-  console.log(exportStatus[spec.final]);
-}
-for (const spec of EXPORTS) {
-  if (Math.max(...spec.sources.map(mtime)) > mtime(spec.final)) runExport(spec);
-  for (const source of spec.sources) {
-    watchFile(join(root, source), { interval: 500 }, (cur, prev) => {
-      if (cur.mtimeMs !== prev.mtimeMs && cur.mtimeMs > 0) runExport(spec);
-    });
-  }
+const mods = (existsSync(join(root, "mods")) ? readdirSync(join(root, "mods"), { withFileTypes: true }) : [])
+  .filter((d) => d.isDirectory() && existsSync(join(root, "mods", d.name, "src/index.ts")))
+  .map((d) => d.name);
+const extensions: ModServer[] = [];
+for (const name of mods) {
+  const file = join(root, "mods", name, "tools/serve.ts");
+  if (!existsSync(file)) continue;
+  const ext: ModServer = await import(pathToFileURL(file).href);
+  ext.start?.();
+  extensions.push(ext);
 }
 
 createServer((req, res) => {
@@ -62,54 +50,24 @@ createServer((req, res) => {
       const f = normalize(url.searchParams.get("f") ?? "");
       const full = join(root, f);
       try {
-        if (!(full.startsWith(join(root, "assets/")) || full.startsWith(join(root, "work/"))) || !statSync(full).isFile()) throw new Error();
+        if (!(full.startsWith(join(root, "assets/")) || full.startsWith(join(root, "mods/"))) || !statSync(full).isFile()) throw new Error();
         res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ mtime: statSync(full).mtimeMs }));
       } catch {
         res.writeHead(404).end();
       }
       return;
     }
-    if (req.method === "PUT" && url.pathname === "/dev/kiri-def") {
-      const chunks: Buffer[] = [];
-      req.on("data", (c: Buffer) => chunks.push(c));
-      req.on("end", () => {
-        try {
-          const body = Buffer.concat(chunks).toString("utf8").trim();
-          if (body.length > 500000 || typeof JSON.parse(body) !== "object") throw new Error();
-          writeFileSync(join(root, "src/data/kiriDef.ts"), `import type { CharDef } from "../game/characters.ts";\n\nexport const KIRI_DEF: CharDef = ${body};\n`);
-          res.writeHead(200).end("ok");
-        } catch {
-          res.writeHead(400).end();
-        }
-      });
+    if (url.pathname === "/dev/mods") {
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(mods));
       return;
     }
-    if (url.pathname === "/dev/export") {
-      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(exportStatus));
-      return;
-    }
-    const spec = EXPORTS.find((e) => e.sources.some((f) => url.pathname === `/dev/${f}`));
-    if (req.method === "PUT" && spec) {
-      const chunks: Buffer[] = [];
-      req.on("data", (c: Buffer) => chunks.push(c));
-      req.on("end", () => {
-        const body = Buffer.concat(chunks);
-        if (body.length > 2_000_000 || !body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
-          res.writeHead(400).end();
-          return;
-        }
-        writeFileSync(join(root, url.pathname.slice("/dev/".length)), body);
-        runExport(spec);
-        res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }).end(exportStatus[spec.final]);
-      });
-      return;
-    }
+    if (extensions.some((ext) => ext.handle?.(req, res, url.pathname))) return;
     res.writeHead(404).end();
     return;
   }
   const path = normalize(decodeURIComponent((req.url ?? "/").split("?")[0]));
   const file = join(root, path === "/" ? "index.html" : path);
-  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || /^\/naver[0-9a-f]+\.html$/.test(path) || path.startsWith("/dist/") || path.startsWith("/assets/") || (path.startsWith("/work/") && loopback(req.socket.remoteAddress)))) {
+  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || /^\/naver[0-9a-f]+\.html$/.test(path) || path.startsWith("/dist/") || path.startsWith("/assets/") || (path.startsWith("/mods/") && loopback(req.socket.remoteAddress)))) {
     res.writeHead(403).end();
     return;
   }

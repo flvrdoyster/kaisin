@@ -1,7 +1,7 @@
-import { G } from "../game/core.ts";
-import { charSpr } from "../game/characters.ts";
-import { Renderer } from "../gfx/render.ts";
-import { CENTER, CharDef } from "../game/characters.ts";
+import { G } from "../../../src/game/core.ts";
+import { CENTER, charSpr } from "../../../src/game/characters.ts";
+import { Renderer } from "../../../src/gfx/render.ts";
+import { CharDef } from "../src/kiri.ts";
 import { CharacterEditor } from "./editor.ts";
 
 const DIRS = ["위", "오른쪽", "아래", "왼쪽"];

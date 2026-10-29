@@ -1,5 +1,5 @@
-import { GAME_TABLES } from "../data/gameTables.ts";
-import type { IndexedImage } from "../data/image.ts";
+import { GAME_TABLES } from "../../../src/data/gameTables.ts";
+import type { IndexedImage } from "../../../src/data/image.ts";
 
 type Box = [number, number, number, number];
 type Grid = number[][];

@@ -1,6 +1,7 @@
-import { G } from "../game/core.ts";
-import { CENTER, CharDef, Rect, charSpr, defaultDef, getKiriDef, selectCharacter } from "../game/characters.ts";
-import { Renderer } from "../gfx/render.ts";
+import { G } from "../../../src/game/core.ts";
+import { CENTER, Rect, charSpr, selectCharacter } from "../../../src/game/characters.ts";
+import { CharDef, defaultDef, getKiriDef } from "../src/kiri.ts";
+import { Renderer } from "../../../src/gfx/render.ts";
 
 const DIRS = ["위", "오른쪽", "아래", "왼쪽"];
 const K = 4;
@@ -330,7 +331,7 @@ export class CharacterEditor {
   private async save() {
     const ok = await this.hooks.save(this.def());
     if (ok) this.dirty = false;
-    this.show(ok ? "저장됨: src/data/kiriDef.ts" : "저장 실패 (개발 서버가 필요합니다)");
+    this.show(ok ? "저장됨: mods/kiri/src/hitboxDef.ts" : "저장 실패 (개발 서버가 필요합니다)");
   }
 
   private poseOffset(poses: Int32Array, pose: number): [number, number] {

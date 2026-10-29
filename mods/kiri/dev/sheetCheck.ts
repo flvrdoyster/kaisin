@@ -1,4 +1,4 @@
-import type { IndexedImage } from "../data/image.ts";
+import type { IndexedImage } from "../../../src/data/image.ts";
 
 export const CHARACTER_CELLS = [...Array.from({ length: 33 }, (_, i) => i), 34, 36, 83, 84, 85, 86, 87, 88, 89, 90];
 

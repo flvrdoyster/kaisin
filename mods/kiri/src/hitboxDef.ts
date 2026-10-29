@@ -1,4 +1,4 @@
-import type { CharDef } from "../game/characters.ts";
+import type { CharDef } from "./kiri.ts";
 
 export const KIRI_DEF: CharDef = {
  "version": 1,

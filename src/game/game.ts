@@ -5,7 +5,7 @@ import { drawHud } from "./hud.ts";
 import { playerMain, playerStartWalk } from "./player.ts";
 import { changeRoom, loadInts, startRoomScript } from "./rooms.ts";
 import { spawnGameOver, spawnTomb } from "./scenes.ts";
-import { KIRI_FACE, KIRI_SHEET, charSpr } from "./characters.ts";
+import { charSpr } from "./characters.ts";
 import { spawnTitle } from "./title.ts";
 import { spawnStatusEdit } from "./status.ts";
 import { loadBackdrop, spawnClearScreen, spawnEnding, spawnStaff } from "./ending.ts";
@@ -21,8 +21,6 @@ export function loadCommonSheets() {
   s.loadGrid(0xd, "ANI_SP.png", 0xc0, 0xc0, 0x20, 0x20);
   s.loadRects(0xb, "SUUJI_DT.png", 0x50, 0x50, e.i32("rectSUUJI"));
   s.loadRects(5, "SMASH.png", 0x30, 0x30, e.i32("rectSMASH"));
-  if (s.has("KIRI.png")) s.loadRects(KIRI_SHEET, "KIRI.png", 0xe0, 0xe0, e.i32("rectSMASH"));
-  if (s.has("KIRI_FACE.png")) s.loadGrid(KIRI_FACE, "KIRI_FACE.png", 0xf0, 0, 0x80, 0x80);
   s.loadRects(0xc, "IROIRO_0.png", 0xb0, 0xb0, e.i32("rectIROIRO"));
   s.loadRects(9, "ZAKO_4.png", 0xa0, 0xa0, e.i32("rectZAKO4"));
   s.loadRects(0x11, "UNEUNE.png", 0x80, 0x80, e.i32("rectUNEUNE"));
@@ -339,22 +337,8 @@ export class Game {
       const t = G.texts[0x5c];
       if (t) r.text(0, 0x1c0, t.text, t.font);
     }
-    if (G.hitbox && G.scene === 0) this.drawHitbox();
+    G.debug?.overlay?.(r);
     r.present(G.shakeX, G.shakeY);
     this.advanceShake();
-  }
-
-  private drawHitbox() {
-    const r = this.renderer;
-    if (G.hitboxTtl > 0) {
-      G.hitboxTtl--;
-      const b = G.hitboxRects;
-      for (let i = 0; i < 12; i += 4) {
-        if (b[i] === b[i + 2]) continue;
-        r.box(b[i] >> 16, b[i + 1] >> 16, (b[i + 2] - b[i]) >> 16, (b[i + 3] - b[i + 1]) >> 16, "#ff4040");
-      }
-      for (let i = 0; i < G.hitboxStrikes.length; i += 2) r.dot(G.hitboxStrikes[i], G.hitboxStrikes[i + 1], 3, "#40c0ff");
-    }
-    r.dot(G.playerCX >> 16, G.playerCY >> 16, 5, "#ffff00");
   }
 }

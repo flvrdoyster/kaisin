@@ -1,14 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { decodeIndexed, decodePng, encodeIndexed } from "./png.ts";
-import { MIRRORS, buildWalk, hasWalkTable, mirrorWalk } from "../src/dev/walkFromStand.ts";
-import { GAME_H, GAME_W, KIRI_SHEETS, assemble, sheetSize } from "../src/dev/kiriSheets.ts";
+import { MIRRORS, buildWalk, hasWalkTable, mirrorWalk } from "../art/walkFromStand.ts";
+import { GAME_H, GAME_W, KIRI_SHEETS, assemble, sheetSize } from "../art/sheets.ts";
 
-const root = resolve(import.meta.dirname, "..");
+const root = resolve(import.meta.dirname, "../../..");
 
 export const EXPORTS = [
-  { sources: KIRI_SHEETS.map((s) => s.file), final: "assets/gfx/KIRI.png", transparent: true, walk: true },
-  { sources: ["work/kiri/KIRI_FACE.png"], final: "assets/gfx/KIRI_FACE.png", transparent: false, walk: false },
+  { sources: KIRI_SHEETS.map((s) => s.file), final: "mods/kiri/assets/KIRI.png", transparent: true, walk: true },
+  { sources: ["mods/kiri/work/KIRI_FACE.png"], final: "mods/kiri/assets/KIRI_FACE.png", transparent: false, walk: false },
 ];
 
 type Rgb = [number, number, number];
