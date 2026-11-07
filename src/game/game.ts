@@ -236,6 +236,7 @@ export class Game {
     private readonly renderer: Renderer,
     private readonly readInput: () => number,
     private readonly startRoom: number | null,
+    private readonly onPlay: () => void = () => {},
   ) {}
 
   autoPause() {
@@ -262,9 +263,11 @@ export class Game {
         G.world.run();
         break;
       case 3:
+        this.onPlay();
         startGame(this.startRoom ?? 0x20, false);
         break;
       case 4:
+        this.onPlay();
         startGame(this.startRoom ?? 4, true);
         break;
       case 5:

@@ -25,6 +25,8 @@
 
 - 게임 캔버스 밖 글꼴은 KoddiUD온고딕(jsDelivr CDN, 400·700, 실패하면 `system-ui`)이고 캔버스 안 글자는 Noto 그대로다. 푸터는 다른 프로젝트와 같은 `https://atah.io/footer.js`(에뮬레이터가 아니므로 `data-emulator` 없음)를 쓰고, 스크립트가 만드는 `#footer`는 `position: fixed`로 띄워 레이아웃과 터치 조작부에 영향이 없다(터치 오버레이보다 아래층이라 터치 기기에서는 링크를 누를 수 없다). 가로는 화면 아래, 세로는 캔버스 바로 아래에 놓고, 화면 높이 560px 이하에서는 크레딧 줄을 숨긴다. 모바일 글자 자동 확대는 `text-size-adjust`로 끈다. 로딩·오류 문구(`#status`)도 `fixed`로 화면(세로는 캔버스) 중앙에 둔다.
 
+- 분석 이벤트: GTM(`GTM-PR4S897C`, localhost·127.0.0.1에서는 불러오지 않음)의 `dataLayer`로 보내고 모든 이벤트에 `game: "kaisin"`이 붙는다(`src/analytics.ts`). `play_start`(페이지당 1회, 타이틀에서 본편·타임 트라이얼을 처음 시작할 때, `lang`), `play_milestone`(실제 플레이 5·15·30·60·120분에 도달할 때마다 1회, `minutes`. 탭이 보이고 그 1분 동안 입력이 있던 분만 셈, `src/playTime.ts`), `gamepad_activate`(터치 조작부를 켬, 터치 기기는 페이지마다), `load_failed`(부팅 실패), `language_change`(`lang`). GTM은 이벤트 이름 정규식(`emulator_start|save_created|save_restored|load_failed|gamepad_activate|feedback_sent|play_milestone`)에 맞는 것만 GA4로 넘기므로, 거기에 없는 `play_start`·`language_change`는 GTM 트리거를 고쳐야 GA4에 들어간다.
+
 ## 캐릭터와 확장 모드
 
 - 캐릭터 분리(`src/game/characters.ts`): `G.char`가 시트 표면 번호·초상화·애니 표·포즈 오프셋·공격 판정·타격점·피격 영역을 가진다. 플레이어 객체, 게임 시작 시 초기 스프라이트, 게임 오버의 달리는 캐릭터·무덤 석상은 `G.char`를 따르고, 타이틀 데모·엔딩은 스마슈(표면 5) 그대로다. 캐릭터는 `registerCharacter(id, build)`로 등록하고 `selectCharacter(id)`로 고른다. 본체에는 스마슈만 있다. 스마슈도 이 공용 경로(`G.char` 표, `G.hurt` 판정)를 지나므로 그 부분을 고칠 때는 스마슈 플레이가 원본과 같은지 따로 확인한다.

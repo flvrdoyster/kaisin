@@ -12,6 +12,7 @@ import { loadMods, type Runner } from "./mods.ts";
 import { readTexts } from "./game/text.ts";
 import { startMusic, type TrackInfo } from "./audio/music.ts";
 import { track } from "./analytics.ts";
+import { markInput, startPlayTime } from "./playTime.ts";
 import { decodeIndexedPng, type IndexedImage } from "./data/image.ts";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -177,7 +178,20 @@ async function boot() {
     current = state.lang;
     renderer.fontFamily = fontFor(state.lang);
   });
-  const game = new Game(renderer, () => forcedInput ?? input.read(), startRoom);
+  const readInput = () => {
+    if (forcedInput !== null) return forcedInput;
+    const bits = input.read();
+    if (bits) markInput();
+    return bits;
+  };
+  let playing = false;
+  const onPlay = () => {
+    if (playing) return;
+    playing = true;
+    track("play_start", { lang: state.lang });
+    startPlayTime();
+  };
+  const game = new Game(renderer, readInput, startRoom, onPlay);
   status.textContent = "";
   if (DEV) {
     const run = (frames: number, bits = 0) => {
@@ -220,7 +234,6 @@ async function boot() {
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
-  track("game_start", { lang });
 }
 
 boot().catch((e) => {
