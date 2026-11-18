@@ -17,6 +17,8 @@ const types: Record<string, string> = {
   ".json": "application/json; charset=utf-8",
   ".tsv": "text/plain; charset=utf-8",
   ".png": "image/png",
+  ".ico": "image/x-icon",
+  ".webmanifest": "application/manifest+json",
   ".wav": "audio/wav",
   ".ogg": "audio/ogg",
 };
@@ -67,7 +69,7 @@ createServer((req, res) => {
   }
   const path = normalize(decodeURIComponent((req.url ?? "/").split("?")[0]));
   const file = join(root, path === "/" ? "index.html" : path);
-  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/sitemap.xml" || /^\/naver[0-9a-f]+\.html$/.test(path) || path.startsWith("/dist/") || path.startsWith("/assets/") || (path.startsWith("/mods/") && loopback(req.socket.remoteAddress)))) {
+  if (!file.startsWith(root) || !(path === "/" || path === "/index.html" || path === "/robots.txt" || path === "/favicon.ico" || path === "/manifest.webmanifest" || path === "/install.js" || path.startsWith("/icons/") || path === "/sitemap.xml" || /^\/naver[0-9a-f]+\.html$/.test(path) || path.startsWith("/dist/") || path.startsWith("/assets/") || (path.startsWith("/mods/") && loopback(req.socket.remoteAddress)))) {
     res.writeHead(403).end();
     return;
   }

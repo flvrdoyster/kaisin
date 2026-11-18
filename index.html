@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <title>환세쾌진극 웹 버전 : atah.io</title>
     <link rel="icon" href="favicon.ico" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="환세쾌진극" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -89,6 +92,9 @@
       #footer { position: fixed; left: 0; right: 0; bottom: calc(max(env(safe-area-inset-bottom), 0px) + 4px); z-index: 1; text-align: center; font-size: 0.75em; line-height: 1.15; color: rgba(204, 204, 204, 0.5); white-space: nowrap; pointer-events: none; }
       #footer p { margin: 0; }
       #footer a { color: inherit; pointer-events: auto; }
+      #install-line[hidden], #install-hint[hidden] { display: none; }
+      #install-line { pointer-events: auto; }
+      #install-hint { display: block; }
       @media (max-height: 560px) { #footer .footer-credits { display: none; } }
       @media (orientation: portrait) { #footer { bottom: auto; top: calc(max(env(safe-area-inset-top), 0px) + 64px + min(75vw, 90vh) + 10px); } }
     </style>
@@ -100,6 +106,7 @@
     <canvas id="screen" width="640" height="480"></canvas>
     <div id="status"></div>
     <script src="https://atah.io/footer.js"></script>
+    <script src="install.js"></script>
     <script type="module" src="./dist/src/main.js"></script>
   </body>
 </html>
